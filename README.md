@@ -1,5 +1,7 @@
 # Benchmarking EML based Neural Networks
 
+**Disclaimer:** Generative AI has assisted heavily in the creation of this repo.
+
 Odrzywołek (2026, [arXiv:2603.21852](https://arxiv.org/abs/2603.21852)) showed that one operator,
 **eml(x, y) = eˣ − ln y**, together with the constant 1, generates every elementary function. This repo asks
 whether a neural network built **only** from that operator is useful in practice. Is it accurate? Is it
