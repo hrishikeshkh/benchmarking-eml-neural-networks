@@ -52,6 +52,13 @@ def realworld_task(args: tuple) -> dict:
     return run_one(*args)
 
 
+@app.function(cpu=1.0, memory=3072, timeout=4 * 3600, retries=1)
+def efficiency_task(args: tuple) -> dict:
+    _setup()
+    from run_efficiency import run_one
+    return run_one(*args)
+
+
 @app.function(cpu=1.0, memory=1024, timeout=600)
 def versions() -> str:
     import importlib.metadata as md
@@ -76,6 +83,25 @@ def main(kind: str = "feynman", methods: str = "EML", problems: str = "all", noi
          k: int = 5, out: str = ""):
     sys.path.insert(0, str(ROOT / "benchmarks"))
     print("remote package versions:", versions.remote())
+    if kind == "efficiency":
+        from feynman_data import load_problems
+        from realworld_data import TABULAR
+        out_path = Path(out or ROOT / "results" / "efficiency.jsonl")
+        done = _done(out_path, ("kind", "dataset", "seed"))
+        tasks = [("feynman", p.name, 0) for p in load_problems()] + [("tabular", d, 0) for d in TABULAR]
+        tasks = [t for t in tasks if t not in done]
+        print(f"{len(tasks)} runs to do ({len(done)} already in {out_path.name})", flush=True)
+        with open(out_path, "a") as fh:
+            for i, res in enumerate(efficiency_task.map(tasks, order_outputs=False, return_exceptions=True), 1):
+                if isinstance(res, Exception):
+                    print(f"[{i}/{len(tasks)}] remote failure: {res!r}", flush=True)
+                    continue
+                fh.write(json.dumps(res) + "\n")
+                fh.flush()
+                e = next((m for m in res.get("models", []) if m["model"] == "EML"), {})
+                print(f"[{i}/{len(tasks)}] {res['dataset']:28s} EML R2 {e.get('r2', float('nan')):.4f} "
+                      f"params {e.get('n_params')} {res.get('error', '')}", flush=True)
+        return
     if kind == "feynman":
         from feynman_data import load_problems
         from run_feynman import DEV_PROBLEMS, ablation_problems

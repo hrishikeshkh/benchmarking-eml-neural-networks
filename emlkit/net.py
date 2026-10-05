@@ -370,6 +370,22 @@ class EMLNet(nn.Module):
         return live
 
     @torch.no_grad()
+    def n_params(self) -> torch.Tensor:
+        """Per-restart number of nonzero parameters in units that reach the output
+        (argument weights and biases of live units, read-out weights and bias)."""
+        out = torch.zeros(self.R, dtype=torch.long)
+        for r in range(self.R):
+            live = self.live_units(r)
+            tot = int((self.eff("wo")[r] != 0).sum()) + int(self.eff("bo")[r] != 0)
+            for l in range(self.n_layers):
+                m = live[l]
+                for n in (f"wa{l}", f"ba{l}", f"wc{l}", f"bc{l}"):
+                    if self.has(n) and m.any():
+                        tot += int((self.eff(n)[r][m] != 0).sum())
+            out[r] = tot
+        return out
+
+    @torch.no_grad()
     def complexity(self) -> torch.Tensor:
         """Per-restart model size: live EML nodes + nonzero weights/biases feeding them
         + nonzero read-out weights."""

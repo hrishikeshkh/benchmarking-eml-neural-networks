@@ -1,0 +1,337 @@
+<title>EML Networks</title>
+<meta name="description" content="Learning closed-form laws with trainable Exp-Minus-Log networks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>
+  window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+                     svg: { fontCache: "global" } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js" async></script>
+<style>
+/* Layout: one 44rem reading column in the manner of a preprint; figures and tables may run
+   wider inside their own scroll containers. */
+:root {
+  --paper: #fbfbfa;
+  --ink: #17191c;
+  --muted: #5c6068;
+  --rule: #dad9d4;
+  --accent: #1f5fae;
+  --tint: #eef3fa;
+  --good: #1a7f4b;
+  --font-body: "STIX Two Text", "STIX Two", Georgia, "Times New Roman", serif;
+  --font-head: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step--1: 0.875rem;
+  --step--2: 0.78rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15171a; --ink: #e8e6e1; --muted: #a2a5ab; --rule: #2e3136;
+    --accent: #79aef0; --tint: #1c2633; --good: #5cc28c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15171a; --ink: #e8e6e1; --muted: #a2a5ab; --rule: #2e3136;
+  --accent: #79aef0; --tint: #1c2633; --good: #5cc28c; color-scheme: dark;
+}
+html { background: var(--paper); }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-body);
+  font-size: var(--step-0); line-height: 1.6; padding-inline: 16px; padding-block: 2.5rem 4rem;
+}
+main { max-width: 44rem; margin-inline: auto; display: flex; flex-direction: column; gap: 1.1rem; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.25; text-wrap: balance; margin: 0; }
+h1 { font-size: var(--step-2); letter-spacing: -0.01em; }
+h2 { font-size: var(--step-1); margin-top: 1.6rem; padding-top: 0.9rem; border-top: 1px solid var(--rule); }
+h3 { font-size: var(--step-0); margin-top: 0.6rem; }
+h2 .num, h3 .num { color: var(--accent); margin-right: 0.5em; font-variant-numeric: tabular-nums; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.byline { font-family: var(--font-head); font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.25rem 1.2rem; }
+.abstract { background: var(--tint); padding: 1.1rem 1.25rem; border-radius: 4px; display: flex; flex-direction: column; gap: 0.6rem; }
+.abstract .label, .eyebrow { font-family: var(--font-head); font-size: var(--step--2); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+pre { font-family: var(--font-mono); font-size: var(--step--1); line-height: 1.5; background: var(--tint); padding: 0.9rem 1rem; border-radius: 4px; overflow-x: auto; margin: 0; }
+ul, ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: 0.35rem; }
+figure { margin: 0.4rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
+figure img { width: 100%; height: auto; background: #ffffff; border: 1px solid var(--rule); border-radius: 3px; }
+figcaption, .tcap { font-size: var(--step--1); color: var(--muted); line-height: 1.5; }
+figcaption b, .tcap b { color: var(--ink); font-family: var(--font-head); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); font-variant-numeric: tabular-nums; }
+th, td { padding: 0.32rem 0.55rem; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-family: var(--font-head); font-weight: 600; font-size: var(--step--2); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+td.formula { text-align: left; white-space: normal; font-family: var(--font-mono); font-size: 0.8rem; min-width: 16rem; }
+tr.ours td { font-weight: 600; }
+td.best { color: var(--good); font-weight: 600; }
+.mjx-display { overflow-x: auto; overflow-y: hidden; }
+.refs { font-size: var(--step--1); display: flex; flex-direction: column; gap: 0.4rem; padding-left: 0; list-style: none; }
+.refs li { padding-left: 1.6rem; text-indent: -1.6rem; }
+.note { font-size: var(--step--1); color: var(--muted); }
+@media print {
+  body { padding-block: 0; font-size: 10.5pt; }
+  h2 { break-after: avoid; }
+  figure, .table-wrap, pre { break-inside: avoid; }
+}
+</style>
+
+<main>
+<header style="display:flex;flex-direction:column;gap:0.7rem">
+  <span class="eyebrow">Preprint · October 2026</span>
+  <h1>EML Networks: learning closed-form laws with a single trainable operator</h1>
+  <div class="byline"><span>Hrishikesh K Haritas · Carnegie Mellon University</span><span>Code: <span class="mono">emlkit</span></span></div>
+</header>
+
+<section class="abstract">
+  <span class="label">Abstract</span>
+  
+<p>Odrzywołek (2026) showed that the single binary operator eml(x, y) = e<sup>x</sup> − ln y, together
+with the constant 1, generates every elementary function. We ask whether that operator can serve as the only
+primitive of a <em>trainable, interpretable</em> regression model. EML networks are layered graphs of EML nodes
+with affine arguments. They are trained by gradient descent, then pruned and snapped to exact exponents. Training
+needs four ingredients: least-squares solution of the output node's argument in log space, successive halving
+over restarts, an annealed pull of exponents towards multiples of ½, and Levenberg–Marquardt verification of each
+pruned or snapped structure.</p>
+<p>On the 99 Feynman equations, EML networks recover the exact law for 95% of the held-out problems
+without trigonometric functions (87% of all problems, against 34% for genetic
+programming). In distribution they match an MLP: R² &gt; 0.999 on 100% of problems against 58%.
+Out of distribution they keep R² &gt; 0.99 on 90% of problems, against 4% for the MLP and
+0% for gradient boosting. We also test the method on real physics measurements and general tabular data,
+report where it fails (trigonometric laws, sign-changing products, data sets without a compact law), and release
+<span class="mono">emlkit</span>, a scikit-learn estimator plus a compiler that turns any elementary expression into a
+pure EML tree.</p>
+</section>
+
+
+<h2><span class="num">1</span>Introduction</h2>
+<p>Symbolic regression looks for a formula, not just a predictor. A formula can be read, checked against
+theory, and trusted outside the range of the data. Most practical systems search over expression trees built from a
+hand-picked operator set (+, −, ×, ÷, exp, log, sin, …) with genetic programming. Odrzywołek's result offers a
+different starting point. A single operator, eml(x, y) = e<sup>x</sup> − ln y, is complete for elementary functions
+in the way NAND is complete for Boolean logic. A model built from one differentiable primitive can be trained
+end to end by gradient descent, and every trained model is still a formula.</p>
+<p>Pure EML trees are deep, though. Our compiler needs 23 leaves for x·y and 264 for sin x, and gradients through
+nested exp/ln are badly conditioned. This paper makes the idea practical and tests it against concrete,
+pre-declared claims (<a href="#claims">Table 1</a>). We contribute:</p>
+<ul>
+  <li><b>EML networks</b>: EML nodes with affine arguments and typed units, so that products, powers, radicals and
+  exponentials of monomials need one to three nodes instead of dozens (§2).</li>
+  <li><b>A training recipe</b> that turns near-misses into exact formulas: log-space variable projection, successive
+  halving, annealed quantisation, Levenberg–Marquardt verification of structural edits, and an Occam curriculum
+  with BIC selection (§3).</li>
+  <li><b>An evaluation</b> on 99 Feynman equations (with out-of-distribution tests), 15 real physics data sets and
+  34 tabular data sets, with ablations and a scorecard of every claim (§5).</li>
+  <li><b><span class="mono">emlkit</span></b>, an open-source scikit-learn estimator and a pure-EML compiler,
+  verifier and shortest-tree search.</li>
+</ul>
+
+<h2><span class="num">2</span>EML networks</h2>
+<p>An EML network is a layered directed acyclic graph. Its input features are \(z_0 = [x,\ \ln|x|]\); the fixed
+log-features are themselves EML nodes, since \(\ln x = 1 - \mathrm{eml}(0, x)\). Every unit sees all features computed
+before it through affine maps \(a = W_a z + b_a\) and \(c = W_c z + b_c\), and is one of three types:</p>
+\[ E:\ \mathrm{eml}(a, 1) = e^{a}, \qquad L:\ 1 - \mathrm{eml}(0, c) = \ln|c|, \qquad M:\ \mathrm{eml}(a, c) = e^{a} - \ln|c|. \]
+<p>E and L are the full operator with one argument fixed to the constant 1, or to 0 = ln 1. Fixing an argument
+removes a redundant degree of freedom. Because ln|x| is an input feature, a monomial \(C\prod_j x_j^{p_j}\) is a single E unit,
+\(\exp(\sum_j p_j \ln x_j + \ln C)\). The output is either an affine read-out of the last layer, or itself an E node
+\(y = s\,\exp(w^\top z + b)\) with a fixed sign \(s\). In the second case the network models
+\(\ln|y|\) as a <em>linear</em> function of its features, so products of factors become sums (Figure 1). Pruned
+weights are exactly zero and snapped weights are exact rationals, so a trained network is a closed-form expression
+that SymPy simplifies directly.</p>
+<figure>
+<svg viewBox="0 0 720 250" role="img" aria-label="An EML network computing rho0 divided by the square root of one minus v squared over c squared: an exp unit forms v squared over c squared from log features, a log unit forms ln of one minus that, and the output exp node's argument is solved by least squares." style="max-width:100%;height:auto;color:var(--ink);font-family:var(--font-head)">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+  <g font-size="12" fill="currentColor">
+    <text x="55" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">input x</text>
+    <text x="190" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">fixed ln|x|</text>
+    <text x="345" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">E unit = eml(a, 1)</text>
+    <text x="490" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">L unit = 1 − eml(0, c)</text>
+    <text x="640" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">output = eml(·, 1)</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.3">
+    <rect x="25" y="40" width="60" height="28" rx="3"/>
+    <rect x="25" y="110" width="60" height="28" rx="3"/>
+    <rect x="25" y="180" width="60" height="28" rx="3"/>
+    <rect x="155" y="40" width="70" height="28" rx="3"/>
+    <rect x="155" y="110" width="70" height="28" rx="3"/>
+    <rect x="155" y="180" width="70" height="28" rx="3"/>
+    <rect x="300" y="138" width="90" height="34" rx="3"/>
+    <rect x="445" y="138" width="90" height="34" rx="3"/>
+  </g>
+  <rect x="590" y="66" width="100" height="40" rx="3" fill="var(--tint)" stroke="var(--accent)" stroke-width="1.6"/>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle">
+    <text x="55" y="59">ρ₀</text><text x="55" y="129">v</text><text x="55" y="199">c</text>
+    <text x="190" y="59">ln ρ₀</text><text x="190" y="129">ln v</text><text x="190" y="199">ln c</text>
+    <text x="345" y="160">exp(·)</text>
+    <text x="490" y="160">ln|·|</text>
+    <text x="640" y="91">exp(·)</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.1" fill="none" marker-end="url(#ah)">
+    <line x1="85" y1="54" x2="153" y2="54"/>
+    <line x1="85" y1="124" x2="153" y2="124"/>
+    <line x1="85" y1="194" x2="153" y2="194"/>
+    <line x1="225" y1="124" x2="298" y2="149"/>
+    <line x1="225" y1="194" x2="298" y2="163"/>
+    <line x1="390" y1="155" x2="443" y2="155"/>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#aha)">
+    <path d="M225,54 L588,80"/>
+    <path d="M535,155 C565,155 570,104 588,96"/>
+  </g>
+  <g font-size="11.5" fill="currentColor" text-anchor="middle">
+    <text x="262" y="128">2</text>
+    <text x="262" y="190">−2</text>
+    <text x="345" y="190" fill="var(--muted)">u = v²/c²</text>
+    <text x="416" y="148">−1</text>
+    <text x="490" y="190" fill="var(--muted)">ℓ = ln(1 − u)</text>
+  </g>
+  <g font-size="11.5" fill="var(--accent)" text-anchor="middle">
+    <text x="410" y="60">1</text>
+    <text x="566" y="126">−½</text>
+    <text x="640" y="128">solved by least</text>
+    <text x="640" y="142">squares on ln y</text>
+  </g>
+  <text x="640" y="56" font-size="12" fill="currentColor" text-anchor="middle">y = ρ₀ (1 − v²/c²)^−½</text>
+</svg>
+<figcaption><b>Figure 1.</b> The network EML-Net finds for the relativistic density ρ₀/√(1 − v²/c²) (Feynman II.13.23). Black arrows carry weights learned by gradient descent and snapped to multiples of ½. The output is itself an EML node, so the weights on its incoming (blue) arrows are linear coefficients of ln y and are solved exactly by least squares at every step. Gradient descent only has to discover the two inner units.</figcaption>
+</figure>
+
+<p>The table below lists the shallowest architecture that represents each family of laws exactly. A star marks a
+log-space output node.</p>
+<div class="table-wrap "><table><thead><tr><th>Family</th><th>Example (Feynman)</th><th>Architecture</th></tr></thead><tbody><tr><td>power law ⋅ exp(linear)</td><td>q₁q₂/(4πεr²)</td><td><code>*</code> (no hidden unit)</td></tr><tr><td>⋅ exp(monomial)</td><td>n₀ e<sup>−mgx/kT</sup></td><td><code>E1*</code></td></tr><tr><td>⋅ |affine|<sup>p</sup></td><td>σ/(ε(1+χ))</td><td><code>L1*</code></td></tr><tr><td>sum of monomials</td><td>Gm₁m₂(1/r₂ − 1/r₁)</td><td><code>E2</code>, <code>E3</code></td></tr><tr><td>⋅ (1 ± monomial)<sup>p</sup></td><td>m₀/√(1 − v²/c²)</td><td><code>E1-L1*</code></td></tr><tr><td>⋅ (Σ monomials)<sup>p</sup></td><td>√(x² + y² + z²)</td><td><code>E3-L1*</code></td></tr><tr><td>⋅ (e<sup>monomial</sup> − 1)<sup>p</sup></td><td>ħω/(e<sup>ħω/kT</sup> − 1)</td><td><code>E1-E1-L1*</code></td></tr><tr><td>⋅ (Σ (difference)²)<sup>p</sup></td><td>Gm₁m₂/Σ(x₂−x₁)²</td><td><code>L3-E3-L1*</code></td></tr></tbody></table></div>
+
+<h2><span class="num">3</span>Training</h2>
+<p>All restarts of an architecture are trained in one batched tensor computation. Each parameter carries a
+pruning mask and a snapping mask.</p>
+<ol>
+  <li><b>Variable projection.</b> The read-out is never trained by gradient descent. At every step it is
+  solved by ridge least squares, on y for linear outputs and on ln|y| for log-space outputs, with snapped
+  entries held fixed. Gradients only shape the EML features (Golub &amp; Pereyra, 1973). For a log-space output this
+  also solves every exponent attached to the input logs.</li>
+  <li><b>Structured initialisation and successive halving.</b> E units start from sparse integer exponents. In
+  half the restarts, units fed by earlier units start as exp(±u) or ln|1 ± u|. Training starts with 4× the target
+  number of restarts and keeps the better half twice.</li>
+  <li><b>Annealed quantisation.</b> In the second half of dense training a penalty
+  \(\rho(t)\sum (w - \tfrac12\mathrm{round}(2w))^2\) pulls argument weights towards multiples of ½.</li>
+  <li><b>Prune, snap, verify.</b> Weights below a magnitude threshold, and read-out terms that contribute less than
+  a fraction of std(y), are removed. Weights near a multiple of ½ are frozen there. After each edit the free
+  parameters are refit with Adam, then with Levenberg–Marquardt, and a restart is rolled back if its validation
+  error rose by more than 10%. Levenberg–Marquardt is what makes an exact structure <em>look</em> exact: started at
+  the true solution of II.13.23, Adam fine-tuning drifts to NMSE ≈ 10<sup>−7</sup>, while LM returns to 10<sup>−19</sup>.
+  Restarts are independent, so perturbing parameter slot <i>k</i> in every restart at once yields column <i>k</i> of
+  every Jacobian in one forward-mode pass.</li>
+  <li><b>Occam curriculum.</b> Eleven architectures, from the plain power law <code>*</code> to a wide
+  <code>E4-L2-E2</code> with skip read-out, are tried in order of complexity. Log-space stages are used only when
+  y has a constant sign. The search stops early when a candidate fits the validation data to NMSE &lt; 10<sup>−12</sup>.
+  The final model minimises BIC = n ln(NMSE + 10<sup>−14</sup>) + k ln n over all candidates.</li>
+</ol>
+
+<h2><span class="num">4</span>Experimental setup</h2>
+<p><b>Feynman.</b> All 99 equations of the AI Feynman database (Udrescu &amp; Tegmark, 2020), with formulas and
+variable ranges from PMLB. For each problem we draw 1,000 training points from the original box, 2,000 test points
+from the same box (ID), and 2,000 points with every variable in [hi, 2·hi − lo] (OOD, pure extrapolation). Label noise
+is 0 or 1% of std(y); test sets are noiseless. Recovery is the SRBench criterion: after rounding constants to three
+decimals, model − truth or model / truth simplifies to a constant. Eight problems were used to develop the method and
+are reported separately as the dev set.</p>
+<p><b>Real data.</b> Fifteen physics data sets of measured or simulated laws, from PMLB's <i>first principles</i>
+collection (Cranmer, 2023) and Nikuradse's pipe-flow measurements. Thirty-four general tabular sets: five UCI
+classics (yacht, airfoil, concrete, energy, auto-MPG) and every small real-world PMLB regression set with ≤ 12
+features and ≤ 5,000 rows, excluding synthetic generators. Metric: pooled out-of-fold R² from 5-fold CV
+(leave-one-out for n &lt; 20).</p>
+<p><b>Baselines</b> (default settings, no test-set tuning): Ridge regression; an MLP with two hidden layers of 128 ReLU
+units, standardised inputs and target, and early stopping; histogram gradient boosting; random forest; GPLearn genetic
+programming (population 2,000, 30 generations). EML uses the library defaults (24 restarts per stage, 1,000-step
+budget per stage). Every run uses one CPU core on Modal with identical package versions.</p>
+
+<h2 id="claims"><span class="num">5</span>Results</h2>
+<p>Table 1 states each claim, the evidence and the verdict, computed mechanically from the thresholds declared in
+<span class="mono">CLAIMS.md</span> before the full results existed.</p>
+<p class="tcap"><b>Table 1.</b> Claims scorecard.</p>
+<div class="table-wrap claims"><table><thead><tr><th>#</th><th>Claim</th><th>Evidence</th><th>Verdict</th></tr></thead><tbody><tr><td>C1</td><td>EML recovers exact laws</td><td>95% of held-out non-trig problems</td><td class="best">Supported</td></tr><tr><td>C2</td><td>at least as good as GP symbolic regression</td><td>EML 87% vs GPLearn 34%</td><td class="best">Supported</td></tr><tr><td>C3</td><td>matches an MLP in distribution</td><td>R²>0.999 on 100% (EML) vs 58% (MLP)</td><td class="best">Supported</td></tr><tr><td>C4</td><td>extrapolates far better than MLP / GBM</td><td>OOD R²>0.99 on 90% (EML) vs 4% (MLP), 0% (GBM)</td><td class="best">Supported</td></tr><tr><td>C6</td><td>models are readable</td><td>median size 10 (Feynman), 14 (real data) SymPy nodes</td><td class="best">Supported</td></tr><tr><td>C7</td><td>best model on some real data sets</td><td>1 data sets: first_principles_kepler</td><td class="">Partly</td></tr><tr><td>C8</td><td>accurate while explainable (physics data)</td><td>median gap to best baseline +0.030 R²</td><td class="">Partly</td></tr><tr><td>C10</td><td>every training component matters</td><td>noLogVP −7 pts; noVP −-4 pts</td><td class="">Not supported</td></tr><tr><td>C11</td><td>compiler is exact</td><td>max error 1.7e-15 over 17 expressions</td><td class="best">Supported</td></tr><tr><td>C12</td><td>limitation: trigonometric laws</td><td>0% recovered on trig problems</td><td class="best">Supported</td></tr></tbody></table></div>
+
+<h3><span class="num">5.1</span>Feynman equations</h3>
+<p class="tcap"><b>Table 2.</b> 99 Feynman problems without noise (top) and with 1% label noise (bottom).</p>
+<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr class="ours"><td>EML</td><td>87%</td><td>100%</td><td>90%</td><td>87%</td><td>10</td><td>4</td></tr><tr><td>GPLearn</td><td>34%</td><td>45%</td><td>48%</td><td>30%</td><td>15</td><td>16</td></tr><tr><td>MLP</td><td>–</td><td>58%</td><td>4%</td><td>0%</td><td>–</td><td>2</td></tr><tr><td>GBM</td><td>–</td><td>3%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>0%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
+<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr><td>GPLearn</td><td>26%</td><td>35%</td><td>40%</td><td>23%</td><td>16</td><td>19</td></tr><tr><td>MLP</td><td>–</td><td>54%</td><td>4%</td><td>0%</td><td>–</td><td>3</td></tr><tr><td>GBM</td><td>–</td><td>2%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>1%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
+<figure>
+  <img src="figures/feynman_profile_noise0.0.svg" alt="Share of Feynman problems solved below each NMSE threshold, in and out of distribution, for EML, GPLearn, MLP and GBM.">
+  <figcaption><b>Figure 2.</b> Share of the 99 problems whose test NMSE is below τ. In distribution the MLP is close to EML
+  at moderate thresholds, but only exact formulas reach the left of the plot. Out of distribution, the gap between laws
+  and fitted surfaces opens over the whole range.</figcaption>
+</figure>
+<p>EML recovers 87% of all problems exactly (86% of the held-out set, 100% of the dev set, and 95% of held-out problems without trigonometric functions). GPLearn recovers 34%. Every method that fits well in distribution looks similar there, but extrapolation separates them. 87% of EML models stay exact (NMSE &lt; 10⁻⁹) far outside the training box, against 0% for the MLP and 0% for gradient boosting. </p>
+<h3><span class="num">5.2</span>Real data</h3>
+<p class="tcap"><b>Table 3.</b> Physics data: 5-fold CV R² (leave-one-out for n &lt; 20); best value per row
+in green. The last column is the EML formula fit to all data.</p>
+<div class="table-wrap "><table><thead><tr><th>Data set</th><th>n</th><th>EML</th><th>GPLearn</th><th>MLP</th><th>GBM</th><th>RF</th><th>Linear</th><th>EML formula</th></tr></thead><tbody><tr><td>absorption</td><td>14</td><td>–</td><td>-16.949</td><td class="best">0.974</td><td>0.711</td><td>0.885</td><td>0.625</td><td class="formula"></td></tr><tr><td>bode</td><td>8</td><td>–</td><td>-175252777639.843</td><td>-551.294</td><td>-0.306</td><td class="best">0.554</td><td>-19304.546</td><td class="formula"></td></tr><tr><td>hubble</td><td>32</td><td>0.709</td><td>0.208</td><td>0.730</td><td class="best">0.862</td><td>0.816</td><td>0.697</td><td class="formula">1.019e+5/D**0.3319 - 1.05e+5/D**0.3266 + 3577.0</td></tr><tr><td>ideal_gas</td><td>30</td><td>–</td><td>0.537</td><td class="best">0.879</td><td>0.674</td><td>0.632</td><td>0.830</td><td class="formula"></td></tr><tr><td>kepler</td><td>6</td><td class="best">1.000</td><td>0.818</td><td>0.865</td><td>-0.440</td><td>0.214</td><td>0.905</td><td class="formula">359.9*a**1.509*exp(0.001051*a)/(0.5894*a - 0.387*log(a) - 0.4131)**0.00792</td></tr><tr><td>leavitt</td><td>26</td><td>–</td><td class="best">0.933</td><td>0.924</td><td>0.645</td><td>0.896</td><td>0.915</td><td class="formula"></td></tr><tr><td>newton</td><td>30</td><td>–</td><td class="best">0.977</td><td>-10.774</td><td>0.861</td><td>0.810</td><td>-0.841</td><td class="formula"></td></tr><tr><td>planck</td><td>100</td><td>–</td><td>-0.013</td><td>0.460</td><td>0.785</td><td class="best">0.812</td><td>0.203</td><td class="formula"></td></tr><tr><td>rydberg</td><td>50</td><td>–</td><td>0.987</td><td class="best">0.999</td><td>0.997</td><td>0.993</td><td>0.967</td><td class="formula"></td></tr><tr><td>schechter</td><td>27</td><td>–</td><td>0.828</td><td class="best">0.989</td><td>0.753</td><td>0.889</td><td>0.744</td><td class="formula"></td></tr><tr><td>supernovae_zg</td><td>243</td><td>–</td><td>0.851</td><td>0.939</td><td>0.998</td><td class="best">0.999</td><td>0.553</td><td class="formula"></td></tr><tr><td>supernovae_zr</td><td>236</td><td>–</td><td>0.867</td><td class="best">0.998</td><td>0.993</td><td>0.993</td><td>0.499</td><td class="formula"></td></tr><tr><td>tully_fisher</td><td>18</td><td>–</td><td>0.838</td><td>0.455</td><td>0.775</td><td>0.826</td><td class="best">0.860</td><td class="formula"></td></tr><tr><td>nikuradse_1</td><td>362</td><td>–</td><td>0.939</td><td class="best">0.999</td><td>0.998</td><td>0.998</td><td>0.653</td><td class="formula"></td></tr><tr><td>nikuradse_2</td><td>362</td><td>–</td><td>0.825</td><td class="best">0.977</td><td>0.952</td><td>0.966</td><td>-0.003</td><td class="formula"></td></tr></tbody></table></div>
+<h3><span class="num">5.3</span>Ablations</h3>
+<p class="tcap"><b>Table 5.</b> Exact recovery on 27 held-out non-trigonometric Feynman problems (every other one,
+fixed list) when one component is removed.</p>
+<div class="table-wrap "><table><thead><tr><th>Variant</th><th>Recovery</th><th>Change</th></tr></thead><tbody><tr class="ours"><td>full method</td><td>96%</td><td>–</td></tr><tr><td>no log-space projection (linear output only)</td><td>90%</td><td>-7 pts</td></tr><tr><td>no variable projection</td><td>100%</td><td>+4 pts</td></tr></tbody></table></div>
+<h3><span class="num">5.4</span>The pure EML compiler</h3>
+<p><span class="mono">emlkit.tree</span> compiles any elementary SymPy expression into a tree over {eml, 1, x} using
+textbook identities, for example ln x = eml(1, eml(eml(1, x), 1)) and a − b = eml(ln a, e<sup>b</sup>). It
+evaluates the tree with the principal complex logarithm and checks it against the source expression. The constructions
+are correct, not minimal. Exhaustive search confirms the shortest trees for exp and ln, with 2 and 4 leaves. The sizes
+explain why we train shallow typed networks rather than pure trees: x·y already needs 23 leaves and sin x needs 264.
+Fractional powers of negative numbers can land on the other branch of the logarithm. We verify on domains where the
+source expression is real.</p>
+<p class="tcap"><b>Table 6.</b> Pure EML trees produced by the compiler (leaves, depth, distinct nodes when identical
+subtrees are shared) and maximum relative error at 64 random points.</p>
+<div class="table-wrap "><table><thead><tr><th>Expression</th><th>Leaves</th><th>Depth</th><th>Shared nodes</th><th>Max error</th></tr></thead><tbody><tr><td><code>exp(x)</code></td><td>2</td><td>1</td><td>1</td><td>0e+00</td></tr><tr><td><code>log(x)</code></td><td>4</td><td>3</td><td>3</td><td>2e-16</td></tr><tr><td><code>x - y</code></td><td>6</td><td>4</td><td>5</td><td>4e-16</td></tr><tr><td><code>-x</code></td><td>11</td><td>8</td><td>9</td><td>1e-16</td></tr><tr><td><code>x + y</code></td><td>16</td><td>10</td><td>14</td><td>3e-16</td></tr><tr><td><code>x*y</code></td><td>23</td><td>12</td><td>21</td><td>4e-16</td></tr><tr><td><code>x/y</code></td><td>13</td><td>8</td><td>12</td><td>2e-16</td></tr><tr><td><code>x**y</code></td><td>27</td><td>16</td><td>25</td><td>2e-15</td></tr><tr><td><code>sqrt(x)</code></td><td>54</td><td>25</td><td>41</td><td>3e-16</td></tr><tr><td><code>2</code></td><td>16</td><td>10</td><td>10</td><td>0e+00</td></tr><tr><td><code>pi</code></td><td>67</td><td>26</td><td>32</td><td>0e+00</td></tr><tr><td><code>I</code></td><td>42</td><td>20</td><td>26</td><td>3e-17</td></tr><tr><td><code>sin(x)</code></td><td>264</td><td>71</td><td>94</td><td>9e-16</td></tr><tr><td><code>cos(x)</code></td><td>220</td><td>55</td><td>85</td><td>9e-16</td></tr><tr><td><code>tanh(x)</code></td><td>77</td><td>27</td><td>44</td><td>5e-16</td></tr><tr><td><code>exp(-x**2/2)/sqrt(2*pi)</code></td><td>328</td><td>68</td><td>139</td><td>2e-16</td></tr><tr><td><code>x*y/(4*pi*z**2)</code></td><td>231</td><td>52</td><td>125</td><td>8e-16</td></tr></tbody></table></div>
+
+<h2><span class="num">6</span>Limitations</h2>
+<ul>
+  <li><b>Trigonometric laws.</b> Real-valued EML networks cannot express sin or cos compactly (§5.5). EML recovers
+  0% of the trigonometric Feynman problems. Complex-valued units, where
+  ln(−1) = iπ, are the natural extension.</li>
+  <li><b>Sign-changing products.</b> Log-space stages need y of constant sign, and ln|·| loses the sign of a factor.
+  A law such as n k T ln(V₂/V₁) is therefore only approximated.</li>
+  <li><b>Cost.</b> A fit takes seconds when an early curriculum stage is exact, and several minutes on one core
+  otherwise. That is about 10–100× an MLP fit.</li>
+  <li><b>Scope.</b> One seed per configuration, default hyper-parameters, and GPLearn as the only GP baseline.
+  Stronger GP systems (PySR, Operon) would make a harder comparison.</li>
+</ul>
+
+<h2><span class="num">7</span>Related work</h2>
+<p>Gradient-trained symbolic layers go back to product units (Durbin &amp; Rumelhart, 1989) and the Equation Learner
+(Martius &amp; Lampert, 2016; Sahoo et al., 2018). Kolmogorov–Arnold networks (Liu et al., 2024) learn univariate
+splines that are symbolified afterwards. Genetic programming dominates practice (Koza, 1992; Cranmer, 2023), and
+SRBench (La Cava et al., 2021) standardised its evaluation. AI Feynman (Udrescu &amp; Tegmark, 2020) introduced
+the benchmark used here. EML networks differ in using one operator for every node and in solving the outer formula
+exactly by log-space variable projection.</p>
+
+<h2><span class="num">8</span>Conclusion</h2>
+<p>A single operator is enough to build a trainable model whose fitted parameters <em>are</em> a formula. With the
+right optimisation scaffolding, gradient descent on EML networks recovers many physical laws exactly. Those laws keep
+their accuracy far outside the training range, where neural networks and tree ensembles fail. On data without a
+compact law the formulas remain readable, at a measured cost in accuracy. Code, data, raw results and this paper
+are reproducible with <span class="mono">emlkit</span>.</p>
+
+<h2>References</h2>
+<ul class="refs">
+  <li>Cranmer, M. (2023). Interpretable machine learning for science with PySR and SymbolicRegression.jl. arXiv:2305.01582.</li>
+  <li>Durbin, R. &amp; Rumelhart, D. (1989). Product units: a computationally powerful and biologically plausible extension to backpropagation networks. <i>Neural Computation</i> 1(1).</li>
+  <li>Golub, G. &amp; Pereyra, V. (1973). The differentiation of pseudo-inverses and nonlinear least squares problems whose variables separate. <i>SIAM J. Numer. Anal.</i> 10(2).</li>
+  <li>Koza, J. (1992). <i>Genetic Programming</i>. MIT Press.</li>
+  <li>La Cava, W. et al. (2021). Contemporary symbolic regression methods and their relative performance. NeurIPS Datasets and Benchmarks.</li>
+  <li>Liu, Z. et al. (2024). KAN: Kolmogorov–Arnold Networks. arXiv:2404.19756.</li>
+  <li>Martius, G. &amp; Lampert, C. (2016). Extrapolation and learning equations. arXiv:1610.02995.</li>
+  <li>Nikuradse, J. (1933). Strömungsgesetze in rauhen Rohren. VDI-Forschungsheft 361.</li>
+  <li>Odrzywołek, A. (2026). All elementary functions from a single binary operator. arXiv:2603.21852.</li>
+  <li>Sahoo, S., Lampert, C. &amp; Martius, G. (2018). Learning equations for extrapolation and control. ICML.</li>
+  <li>Udrescu, S.-M. &amp; Tegmark, M. (2020). AI Feynman: a physics-inspired method for symbolic regression. <i>Science Advances</i> 6(16).</li>
+</ul>
+</main>

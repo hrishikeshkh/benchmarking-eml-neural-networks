@@ -22,6 +22,22 @@ used during method development (the 8 dev problems are listed in `benchmarks/run
 | C11 | compiler is exact | max error of compiled pure-EML trees on the test expressions | < 1e-10 | – |
 | C12 | known limitation: trigonometric laws | recovery on trig Feynman problems (no noise) | ≤ 10% (limitation confirmed) | – |
 
+### Compute claims (added 2026-10-05, before the efficiency sweep was run)
+
+Setup (`benchmarks/run_efficiency.py`): one split per problem. Feynman uses 1% noise, n = 1000 and an ID test
+set; tabular uses a 75/25 split. MLP family: one hidden layer of 1–128 units, plus the 2×128 baseline. *Matching
+MLP* = smallest family member with test R² ≥ EML R² − 0.005. *Parameter-matched MLP* = smallest family member
+with at least as many parameters as EML.
+
+| # | Claim | Test | S | P |
+|---|---|---|---|---|
+| C13 | same accuracy with far fewer parameters (Feynman) | median of params(matching MLP) / params(EML); no match = EML wins | ≥ 10× | ≥ 2× |
+| C14 | same accuracy with fewer parameters (tabular) | same ratio on tabular data | ≥ 10× | ≥ 2× |
+| C15 | cheaper inference | median latency(2×128 MLP) / latency(EML formula), single core, 100k rows | ≥ 10× | ≥ 2× |
+| C16 | beats a parameter-matched NN | share of all tasks where EML R² ≥ parameter-matched MLP R² | ≥ 2/3 | ≥ 1/2 |
+| C17 | training cost comparable to an MLP | median train time EML / 2×128 MLP | ≤ 10× | ≤ 100× |
+| C18 | pruning keeps accuracy | median parameter reduction from the dense EML net to the final formula, and median validation R² loss | ≥ 80% and ≤ 0.01 | ≥ 50% and ≤ 0.02 |
+
 Protocol: Feynman uses n = 1000 training points, 2000 ID test points and 2000 OOD test points, seed 0,
 noise ∈ {0, 1% of std(y)}. Real-world data uses 5-fold CV (leave-one-out for n < 20) with pooled
 out-of-fold R². Baselines: Ridge, MLP (2×128 ReLU, early stopping), histogram GBM, random forest,

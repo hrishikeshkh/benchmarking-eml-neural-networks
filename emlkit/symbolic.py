@@ -1,6 +1,7 @@
 """Export a trained EMLNet restart to a closed-form SymPy expression."""
 from __future__ import annotations
 
+import math
 from typing import Sequence
 
 import numpy as np
@@ -117,6 +118,8 @@ def clean_constants(expr: sp.Expr, zero_abs: float, rel: float = 1e-7,
     reps = {}
     for f in expr.atoms(sp.Float):
         v = float(f)
+        if not math.isfinite(v):
+            continue
         if abs(v) < zero_abs:
             reps[f] = sp.Integer(0)
             continue

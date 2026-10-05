@@ -304,6 +304,8 @@ class EMLRegressor(BaseEstimator, RegressorMixin):
         self._optimize(self.dense_steps - self.halving * round_steps if self.halving else self.dense_steps,
                        self.lr, quant=self.quant, keep_best=False)
         self._ref = self._refresh()
+        # size and accuracy of every restart *before* pruning / snapping (for pruning statistics)
+        self._dense_stats.append(dict(arch=arch, val_nmse=self._ref.clone(), n_params=self.net_.n_params()))
         for th, tro in zip(self.prune_thresholds, self.readout_rel_thresholds):
             self._edit(lambda th=th, tro=tro: self._prune(th, tro), f"prune {th}")
         # in log-space stages the read-out weights are exponents, so they are snapped too
@@ -359,6 +361,7 @@ class EMLRegressor(BaseEstimator, RegressorMixin):
         y_full_tr = T(ys[perm[n_val:]] if n_val >= 20 else ys[perm])
 
         self.nets_, self.candidates_, self.stage_archs_ = [], [], []
+        self._dense_stats = []
         for stage, arch in enumerate(curriculum):
             v = self._train_stage(arch, seed=self.random_state * 1000 + stage)
             cx = self.net_.complexity()
@@ -402,9 +405,16 @@ class EMLRegressor(BaseEstimator, RegressorMixin):
         self.expr_raw_ = self._export(best)
         self.expr_ = simplify_expr(self.expr_raw_)
         if best.val_nmse < 1e-9:
-            self.expr_ = self._clean_exact(self.expr_)
+            try:
+                self.expr_ = self._clean_exact(self.expr_)
+            except (ArithmeticError, ValueError, TypeError):  # cosmetic step; never fail a fit
+                pass
         best.expr = self.expr_
         self.complexity_ = expr_complexity(self.expr_)
+        self.n_params_ = int(self.net_.n_params()[best.restart])
+        ds = self._dense_stats[best.stage]
+        self.dense_n_params_ = int(ds["n_params"][best.restart])
+        self.dense_val_nmse_ = float(ds["val_nmse"][best.restart])
         self.fit_time_ = time.time() - self._t0
         if self.verbose:
             print(f"selected {best.arch} restart {best.restart}: val nmse {best.val_nmse:.3e}, "
