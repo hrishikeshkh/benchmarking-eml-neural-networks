@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emlkit"
+version = "0.1.0"
+description = "Trainable Exp-Minus-Log (EML) networks for interpretable symbolic regression, plus a pure-EML compiler"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["numpy", "torch>=2.0", "sympy", "scikit-learn"]
+
+[project.optional-dependencies]
+bench = ["pandas", "matplotlib", "pyyaml", "gplearn"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["emlkit*"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::UserWarning"]

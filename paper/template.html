@@ -1,0 +1,97 @@
+<title>EML Networks</title>
+<meta name="description" content="Learning closed-form laws with trainable Exp-Minus-Log networks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>
+  window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] },
+                     svg: { fontCache: "global" } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js" async></script>
+<style>
+/* Layout: one 44rem reading column in the manner of a preprint; figures and tables may run
+   wider inside their own scroll containers. */
+:root {
+  --paper: #fbfbfa;
+  --ink: #17191c;
+  --muted: #5c6068;
+  --rule: #dad9d4;
+  --accent: #1f5fae;
+  --tint: #eef3fa;
+  --good: #1a7f4b;
+  --font-body: "STIX Two Text", "STIX Two", Georgia, "Times New Roman", serif;
+  --font-head: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --step-0: 1.0625rem;
+  --step-1: 1.25rem;
+  --step-2: 1.6rem;
+  --step--1: 0.875rem;
+  --step--2: 0.78rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15171a; --ink: #e8e6e1; --muted: #a2a5ab; --rule: #2e3136;
+    --accent: #79aef0; --tint: #1c2633; --good: #5cc28c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #15171a; --ink: #e8e6e1; --muted: #a2a5ab; --rule: #2e3136;
+  --accent: #79aef0; --tint: #1c2633; --good: #5cc28c; color-scheme: dark;
+}
+html { background: var(--paper); }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-body);
+  font-size: var(--step-0); line-height: 1.6; padding-inline: 16px; padding-block: 2.5rem 4rem;
+}
+main { max-width: 44rem; margin-inline: auto; display: flex; flex-direction: column; gap: 1.1rem; }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; line-height: 1.25; text-wrap: balance; margin: 0; }
+h1 { font-size: var(--step-2); letter-spacing: -0.01em; }
+h2 { font-size: var(--step-1); margin-top: 1.6rem; padding-top: 0.9rem; border-top: 1px solid var(--rule); }
+h3 { font-size: var(--step-0); margin-top: 0.6rem; }
+h2 .num, h3 .num { color: var(--accent); margin-right: 0.5em; font-variant-numeric: tabular-nums; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.byline { font-family: var(--font-head); font-size: var(--step--1); color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.25rem 1.2rem; }
+.abstract { background: var(--tint); padding: 1.1rem 1.25rem; border-radius: 4px; display: flex; flex-direction: column; gap: 0.6rem; }
+.abstract .label, .eyebrow { font-family: var(--font-head); font-size: var(--step--2); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+pre { font-family: var(--font-mono); font-size: var(--step--1); line-height: 1.5; background: var(--tint); padding: 0.9rem 1rem; border-radius: 4px; overflow-x: auto; margin: 0; }
+ul, ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: 0.35rem; }
+figure { margin: 0.4rem 0; display: flex; flex-direction: column; gap: 0.5rem; }
+figure img { width: 100%; height: auto; background: #ffffff; border: 1px solid var(--rule); border-radius: 3px; }
+figcaption, .tcap { font-size: var(--step--1); color: var(--muted); line-height: 1.5; }
+figcaption b, .tcap b { color: var(--ink); font-family: var(--font-head); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); font-variant-numeric: tabular-nums; }
+th, td { padding: 0.32rem 0.55rem; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-family: var(--font-head); font-weight: 600; font-size: var(--step--2); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--ink); }
+td.formula { text-align: left; white-space: normal; font-family: var(--font-mono); font-size: 0.8rem; min-width: 16rem; }
+tr.ours td { font-weight: 600; }
+td.best { color: var(--good); font-weight: 600; }
+.mjx-display { overflow-x: auto; overflow-y: hidden; }
+.refs { font-size: var(--step--1); display: flex; flex-direction: column; gap: 0.4rem; padding-left: 0; list-style: none; }
+.refs li { padding-left: 1.6rem; text-indent: -1.6rem; }
+.note { font-size: var(--step--1); color: var(--muted); }
+@media print {
+  body { padding-block: 0; font-size: 10.5pt; }
+  h2 { break-after: avoid; }
+  figure, .table-wrap, pre { break-inside: avoid; }
+}
+</style>
+
+<main>
+<header style="display:flex;flex-direction:column;gap:0.7rem">
+  <span class="eyebrow">Preprint · {{DATE}}</span>
+  <h1>EML Networks: learning closed-form laws with a single trainable operator</h1>
+  <div class="byline"><span>{{AUTHORS}}</span><span>Code: <span class="mono">emlkit</span></span></div>
+</header>
+
+<section class="abstract">
+  <span class="label">Abstract</span>
+  {{ABSTRACT}}
+</section>
+
+{{BODY}}
+</main>

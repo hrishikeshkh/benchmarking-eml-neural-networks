@@ -1,0 +1,64 @@
+<figure>
+<svg viewBox="0 0 720 250" role="img" aria-label="An EML network computing rho0 divided by the square root of one minus v squared over c squared: an exp unit forms v squared over c squared from log features, a log unit forms ln of one minus that, and the output exp node's argument is solved by least squares." style="max-width:100%;height:auto;color:var(--ink);font-family:var(--font-head)">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+    <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+  <g font-size="12" fill="currentColor">
+    <text x="55" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">input x</text>
+    <text x="190" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">fixed ln|x|</text>
+    <text x="345" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">E unit = eml(a, 1)</text>
+    <text x="490" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">L unit = 1 − eml(0, c)</text>
+    <text x="640" y="22" text-anchor="middle" fill="var(--muted)" font-size="11">output = eml(·, 1)</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.3">
+    <rect x="25" y="40" width="60" height="28" rx="3"/>
+    <rect x="25" y="110" width="60" height="28" rx="3"/>
+    <rect x="25" y="180" width="60" height="28" rx="3"/>
+    <rect x="155" y="40" width="70" height="28" rx="3"/>
+    <rect x="155" y="110" width="70" height="28" rx="3"/>
+    <rect x="155" y="180" width="70" height="28" rx="3"/>
+    <rect x="300" y="138" width="90" height="34" rx="3"/>
+    <rect x="445" y="138" width="90" height="34" rx="3"/>
+  </g>
+  <rect x="590" y="66" width="100" height="40" rx="3" fill="var(--tint)" stroke="var(--accent)" stroke-width="1.6"/>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle">
+    <text x="55" y="59">ρ₀</text><text x="55" y="129">v</text><text x="55" y="199">c</text>
+    <text x="190" y="59">ln ρ₀</text><text x="190" y="129">ln v</text><text x="190" y="199">ln c</text>
+    <text x="345" y="160">exp(·)</text>
+    <text x="490" y="160">ln|·|</text>
+    <text x="640" y="91">exp(·)</text>
+  </g>
+  <g stroke="currentColor" stroke-width="1.1" fill="none" marker-end="url(#ah)">
+    <line x1="85" y1="54" x2="153" y2="54"/>
+    <line x1="85" y1="124" x2="153" y2="124"/>
+    <line x1="85" y1="194" x2="153" y2="194"/>
+    <line x1="225" y1="124" x2="298" y2="149"/>
+    <line x1="225" y1="194" x2="298" y2="163"/>
+    <line x1="390" y1="155" x2="443" y2="155"/>
+  </g>
+  <g stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#aha)">
+    <path d="M225,54 L588,80"/>
+    <path d="M535,155 C565,155 570,104 588,96"/>
+  </g>
+  <g font-size="11.5" fill="currentColor" text-anchor="middle">
+    <text x="262" y="128">2</text>
+    <text x="262" y="190">−2</text>
+    <text x="345" y="190" fill="var(--muted)">u = v²/c²</text>
+    <text x="416" y="148">−1</text>
+    <text x="490" y="190" fill="var(--muted)">ℓ = ln(1 − u)</text>
+  </g>
+  <g font-size="11.5" fill="var(--accent)" text-anchor="middle">
+    <text x="410" y="60">1</text>
+    <text x="566" y="126">−½</text>
+    <text x="640" y="128">solved by least</text>
+    <text x="640" y="142">squares on ln y</text>
+  </g>
+  <text x="640" y="56" font-size="12" fill="currentColor" text-anchor="middle">y = ρ₀ (1 − v²/c²)^−½</text>
+</svg>
+<figcaption><b>Figure 1.</b> The network EML-Net finds for the relativistic density ρ₀/√(1 − v²/c²) (Feynman II.13.23). Black arrows carry weights learned by gradient descent and snapped to multiples of ½. The output is itself an EML node, so the weights on its incoming (blue) arrows are linear coefficients of ln y and are solved exactly by least squares at every step. Gradient descent only has to discover the two inner units.</figcaption>
+</figure>
