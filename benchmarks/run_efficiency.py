@@ -106,9 +106,11 @@ def run_one(kind: str, name: str, seed: int = 0) -> dict:
         fit_s = time.time() - t
         f = m.lambdify()
         with np.errstate(all="ignore"):
-            p = f(Xt)
+            p = m.predict(Xt)          # scored exactly like every other experiment
+            p_formula = f(Xt)          # the exported closed form, evaluated directly
             lat = _latency(f, Xbig)
-        out["models"].append(dict(model="EML", r2=_r2(yt, p), n_params=m.n_params_, ops=_expr_ops(m.expr_),
+        out["models"].append(dict(model="EML", r2=_r2(yt, p), formula_r2=_r2(yt, p_formula),
+                                  n_params=m.n_params_, ops=_expr_ops(m.expr_),
                                   latency_s_per_1M=lat, train_s=fit_s, formula=m.formula(4),
                                   dense_n_params=m.dense_n_params_, dense_val_r2=1 - m.dense_val_nmse_,
                                   val_r2=1 - m.val_nmse_, arch=m.best_.arch))

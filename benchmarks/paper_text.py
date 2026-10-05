@@ -21,10 +21,21 @@ pruned or snapped structure.</p>
 without trigonometric functions ({e['recovery']:.0%} of all problems, against {f0['GPLearn']['recovery']:.0%} for genetic
 programming). In distribution they match an MLP: R² &gt; 0.999 on {e['id_r2_999']:.0%} of problems against {m['id_r2_999']:.0%}.
 Out of distribution they keep R² &gt; 0.99 on {e['ood_r2_99']:.0%} of problems, against {m['ood_r2_99']:.0%} for the MLP and
-{g['ood_r2_99']:.0%} for gradient boosting. We also test the method on real physics measurements and general tabular data,
-report where it fails (trigonometric laws, sign-changing products, data sets without a compact law), and release
-<span class="mono">emlkit</span>, a scikit-learn estimator plus a compiler that turns any elementary expression into a
-pure EML tree.</p>"""
+{g['ood_r2_99']:.0%} for gradient boosting. {_compute_sentence(ctx)} We also report where the method fails: trigonometric laws,
+sign-changing products, exponential blow-ups on small noisy data, and data sets without a compact law. Every claim was
+tested against thresholds fixed before the results. We release <span class="mono">emlkit</span>, a scikit-learn
+estimator plus a compiler that turns any elementary expression into a pure EML tree.</p>"""
+
+
+def _compute_sentence(ctx) -> str:
+    E = ctx["T"].get("efficiency")
+    if not E:
+        return ""
+    a = E["all"]
+    f = E.get("feynman", {})
+    return (f"The learned formulas are cheap to run: a median {a['latency_ratio_median']:.0f}× faster than a 2×128 MLP, and "
+            f"an MLP needs a median {f.get('match_ratio_median', float('nan')):.0f}× more parameters to match them on the "
+            f"Feynman problems. Training, however, is a median {a['train_ratio_median']:.0f}× slower.")
 
 
 def body(ctx, h, fig1) -> str:
@@ -53,7 +64,8 @@ pre-declared claims (<a href="#claims">Table 1</a>). We contribute:</p>
   halving, annealed quantisation, Levenberg–Marquardt verification of structural edits, and an Occam curriculum
   with BIC selection (§3).</li>
   <li><b>An evaluation</b> on 99 Feynman equations (with out-of-distribution tests), 15 real physics data sets and
-  34 tabular data sets, with ablations and a scorecard of every claim (§5).</li>
+  34 tabular data sets. It covers accuracy, explainability, comparison with neural networks, compute, and ablations, with a
+  scorecard of 18 pre-declared claims (§5).</li>
   <li><b><span class="mono">emlkit</span></b>, an open-source scikit-learn estimator and a pure-EML compiler,
   verifier and shortest-tree search.</li>
 </ul>""")
@@ -131,7 +143,9 @@ features and ≤ 5,000 rows, excluding synthetic generators. Metric: pooled out-
 <p><b>Baselines</b> (default settings, no test-set tuning): Ridge regression; an MLP with two hidden layers of 128 ReLU
 units, standardised inputs and target, and early stopping; histogram gradient boosting; random forest; GPLearn genetic
 programming (population 2,000, 30 generations). EML uses the library defaults (24 restarts per stage, 1,000-step
-budget per stage). Every run uses one CPU core on Modal with identical package versions.</p>""")
+budget per stage). Every run uses one CPU core on Modal with identical package versions.</p>
+<p><b>Compute.</b> On one split per problem (Feynman with 1% noise; tabular with a 75/25 split) we compare EML with
+MLPs of nine sizes and with gradient boosting in parameters, inference latency and training time (§5.4).</p>""")
 
     # ------------------------------------------------------------------ 5
     rows = [[c["id"], c["claim"], c["evidence"],
@@ -165,6 +179,7 @@ budget per stage). Every run uses one CPU core on Modal with identical package v
 
     parts.append(_realworld_section(ctx, h))
     parts.append(_ablation_section(ctx, h))
+    parts.append(_compute_section(ctx, h))
     parts.append(_compiler_section(ctx, h))
 
     # ------------------------------------------------------------------ 6-8
@@ -176,8 +191,12 @@ budget per stage). Every run uses one CPU core on Modal with identical package v
   ln(−1) = iπ, are the natural extension.</li>
   <li><b>Sign-changing products.</b> Log-space stages need y of constant sign, and ln|·| loses the sign of a factor.
   A law such as n k T ln(V₂/V₁) is therefore only approximated.</li>
-  <li><b>Cost.</b> A fit takes seconds when an early curriculum stage is exact, and several minutes on one core
-  otherwise. That is about 10–100× an MLP fit.</li>
+  <li><b>Training cost.</b> A fit takes seconds when an early curriculum stage is exact and minutes otherwise, typically
+  two orders of magnitude more than an MLP (C17).</li>
+  <li><b>Blow-ups on small noisy data.</b> On a few small tabular sets a learned exp(·) explodes on held-out folds
+  (CV R² &lt; −1). Clipping predictions to the training range would hide this, so we do not.</li>
+  <li><b>A missing stage.</b> A target that is a plain sum of logarithms (the <i>ideal_gas</i> set stores ln P) is
+  not represented by any strict curriculum stage, and EML fails on it.</li>
   <li><b>Scope.</b> One seed per configuration, default hyper-parameters, and GPLearn as the only GP baseline.
   Stronger GP systems (PySR, Operon) would make a harder comparison.</li>
 </ul>
@@ -282,12 +301,40 @@ fixed list) when one component is removed.</p>
 {table(["Variant", "Recovery", "Change"], rows, ours="full method")}"""
 
 
+def _compute_section(ctx, h) -> str:
+    num, table, pct = h["num"], h["table"], h["pct"]
+    E = ctx["T"].get("efficiency")
+    if not E:
+        return ""
+    rows = []
+    for kind, label in (("feynman", "Feynman, 1% noise"), ("tabular", "Tabular")):
+        k = E.get(kind)
+        if not k:
+            continue
+        rows.append([label, str(k["n"]), num(k["eml_r2_median"]), num(k["mlp_r2_median"]), num(k["eml_params_median"], 0),
+                     f"{k['match_ratio_median']:.0f}×", pct(k["eml_beats_param_matched"]),
+                     f"{k['latency_ratio_median']:.0f}×", f"{k['train_ratio_median']:.0f}×"])
+    return f"""<h3><span class="num">5.4</span>Compute</h3>
+<p>For each problem we also fit MLPs with one hidden layer of 1 to 128 units, plus the 2×128 baseline, and measured
+parameters, single-core NumPy inference time on 100k rows, and training time. EML formulas are tiny and fast to
+evaluate. The price is paid during training.</p>
+<p class="tcap"><b>Table 6.</b> Medians per task. <i>Params ratio</i>: parameters of the smallest MLP that matches EML's
+test R² within 0.005, divided by EML's (EML wins outright where no MLP matches). <i>vs. same-size MLP</i>: share of tasks
+where EML ≥ the smallest MLP with at least as many parameters.</p>
+{table(["Tasks", "n", "EML R²", "2×128 MLP R²", "EML params", "Params ratio", "vs. same-size MLP", "Inference speed-up", "Training slow-down"], rows)}
+<figure>
+  <img src="figures/efficiency_params_vs_r2.svg" alt="Median test R squared against parameter count for MLPs of every size, EML and gradient boosting.">
+  <figcaption><b>Figure 4.</b> Median test R² against parameter count. The MLP curve has to grow by orders of magnitude to
+  reach the accuracy of the EML formula on the Feynman problems; on tabular data the gap is smaller.</figcaption>
+</figure>"""
+
+
 def _compiler_section(ctx, h) -> str:
     table = h["table"]
     cs = ctx["cs"]
     rows = [[f"<code>{r['expr']}</code>", str(r["leaves"]), str(r["depth"]), str(r["dag"]), f"{r['err']:.0e}"]
             for r in cs["compile"]]
-    return f"""<h3><span class="num">5.4</span>The pure EML compiler</h3>
+    return f"""<h3><span class="num">5.5</span>The pure EML compiler</h3>
 <p><span class="mono">emlkit.tree</span> compiles any elementary SymPy expression into a tree over {{eml, 1, x}} using
 textbook identities, for example ln x = eml(1, eml(eml(1, x), 1)) and a − b = eml(ln a, e<sup>b</sup>). It
 evaluates the tree with the principal complex logarithm and checks it against the source expression. The constructions
@@ -295,6 +342,6 @@ are correct, not minimal. Exhaustive search confirms the shortest trees for exp 
 explain why we train shallow typed networks rather than pure trees: x·y already needs 23 leaves and sin x needs 264.
 Fractional powers of negative numbers can land on the other branch of the logarithm. We verify on domains where the
 source expression is real.</p>
-<p class="tcap"><b>Table 6.</b> Pure EML trees produced by the compiler (leaves, depth, distinct nodes when identical
+<p class="tcap"><b>Table 7.</b> Pure EML trees produced by the compiler (leaves, depth, distinct nodes when identical
 subtrees are shared) and maximum relative error at 64 random points.</p>
 {table(["Expression", "Leaves", "Depth", "Shared nodes", "Max error"], rows)}"""

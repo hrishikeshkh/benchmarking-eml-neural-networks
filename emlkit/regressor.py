@@ -483,5 +483,7 @@ class EMLRegressor(BaseEstimator, RegressorMixin):
 
     def lambdify(self):
         """NumPy function evaluating the exported formula: f(X) with X of shape (n, d)."""
-        f = sp.lambdify(self.symbols_, self.expr_, "numpy")
+        # same guard as the network: ln|c| that stays finite at 0 (evalf avoids integer constants)
+        guarded = {"log": lambda c: 0.5 * np.log(np.asarray(c, dtype=float) ** 2 + 1e-16)}
+        f = sp.lambdify(self.symbols_, self.expr_.evalf(), [guarded, "numpy"])
         return lambda X: np.asarray(f(*np.asarray(X, dtype=float).T), dtype=float) * np.ones(len(X))

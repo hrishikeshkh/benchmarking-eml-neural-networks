@@ -53,7 +53,12 @@ def main():
     page = page.replace("{{ABSTRACT}}", abstract(ctx))
     page = page.replace("{{BODY}}", body(ctx, dict(pct=pct, num=num, table=table, esc=html.escape),
                                          (P / "fig_architecture.svg.html").read_text()))
-    (P / "index.html").write_text(page)
+    # stand-alone document (the template itself is a fragment without <html>/<head>)
+    head_end = page.index("<main>")
+    doc = ("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+           "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
+           + page[:head_end] + "</head>\n<body>\n" + page[head_end:] + "\n</body>\n</html>\n")
+    (P / "index.html").write_text(doc)
     print("wrote", P / "index.html")
 
 

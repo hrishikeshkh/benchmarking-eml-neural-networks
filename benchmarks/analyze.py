@@ -53,6 +53,9 @@ def feynman(df: pd.DataFrame) -> dict:
     df = df.copy()
     for col in ("r2_id", "r2_ood"):
         df[col] = df[col].fillna(-np.inf)
+    # failed / timed-out runs of symbolic methods count as "not recovered"
+    sym = df.method.isin(["EML", "GPLearn"])
+    df.loc[sym, "symbolic"] = df.loc[sym, "symbolic"].fillna(False)
     df["nmse_ood"] = df["nmse_ood"].fillna(np.inf)
     out = {}
     for noise, g in df.groupby("noise"):
@@ -101,7 +104,7 @@ def feynman_profile_fig(df: pd.DataFrame, noise: float) -> None:
         ax.set_xlabel("NMSE threshold τ")
         ax.set_title(title, fontsize=9.5, color=TEXT, loc="left")
     axes[0].set_ylabel("share of problems with NMSE ≤ τ")
-    axes[0].legend(loc="upper left", fontsize=8)
+    axes[0].legend(loc="center left", bbox_to_anchor=(0.0, 0.45), fontsize=8)
     fig.tight_layout()
     _save(fig, f"feynman_profile_noise{noise}")
 
@@ -153,8 +156,12 @@ def tabular_scatter_fig(tab: dict, other: str) -> None:
     ax.set_xlabel(f"{other}: 5-fold CV R²")
     ax.set_ylabel("EML formula: 5-fold CV R²")
     k = int((y >= x - 0.02).sum())
-    ax.text(0.03, 0.97, f"{k} of {len(x)} data sets within 0.02 of {other} or better",
-            transform=ax.transAxes, color=TEXT, fontsize=7.8, va="top")
+    ax.text(0.04, 0.96, f"{k} of {len(x)} data sets\nwithin 0.02 of {other}\nor better",
+            transform=ax.transAxes, color=TEXT, fontsize=7.8, va="top", linespacing=1.3)
+    n_clip = int((y <= -0.2).sum())
+    if n_clip:
+        ax.text(0.98, 0.03, f"{n_clip} below −0.2 (shown at edge)", transform=ax.transAxes, color=MUTED,
+                fontsize=7, ha="right", va="bottom")
     fig.tight_layout()
     _save(fig, f"tabular_eml_vs_{other.lower()}")
 
@@ -192,7 +199,9 @@ def claims(T: dict, fe: pd.DataFrame, ab: pd.DataFrame) -> list:
     rows = T.get("physics", {}).get("rows", []) + T.get("tabular", {}).get("rows", [])
     wins = [r["dataset"] for r in rows if r["r2"].get("EML") is not None and
             all(r["r2"]["EML"] >= (r["r2"].get(b) if r["r2"].get(b) is not None else -np.inf) for b in BASELINES)]
-    out.append(("C7", "best model on some real data sets", f"{len(wins)} data sets: {', '.join(wins[:8])}",
+    out.append(("C7", "best model on some real data sets",
+                f"{len(wins)} data sets: {', '.join(w.replace('first_principles_', '') for w in wins[:8])}"
+                + (", …" if len(wins) > 8 else ""),
                 verdict(len(wins), lambda x: x >= 3, lambda x: x >= 1)))
     ph = T.get("physics", {}).get("rows", [])
     if ph:
@@ -220,11 +229,107 @@ def claims(T: dict, fe: pd.DataFrame, ab: pd.DataFrame) -> list:
     err = max(r["err"] for r in cs["compile"])
     out.append(("C11", "compiler is exact", f"max error {err:.1e} over {len(cs['compile'])} expressions",
                 "S" if err < 1e-10 else "N"))
+    E = T.get("efficiency")
+    if E and E.get("n"):
+        for cid, kind, label in (("C13", "feynman", "same accuracy with far fewer parameters (Feynman)"),
+                                 ("C14", "tabular", "same accuracy with fewer parameters (tabular)")):
+            if kind in E:
+                k = E[kind]
+                out.append((cid, label, f"matching MLP needs {k['match_ratio_median']:.0f}× more parameters (median; "
+                            f"no MLP matches EML on {k['no_mlp_matches']:.0%})",
+                            verdict(k["match_ratio_median"], lambda x: x >= 10, lambda x: x >= 2)))
+        a = E["all"]
+        out.append(("C15", "cheaper inference", f"2×128 MLP is {a['latency_ratio_median']:.0f}× slower per prediction (median)",
+                    verdict(a["latency_ratio_median"], lambda x: x >= 10, lambda x: x >= 2)))
+        out.append(("C16", "beats a parameter-matched NN", f"EML ≥ parameter-matched MLP on {a['eml_beats_param_matched']:.0%} of tasks",
+                    verdict(a["eml_beats_param_matched"], lambda x: x >= 2 / 3, lambda x: x >= 1 / 2)))
+        out.append(("C17", "training cost comparable to an MLP", f"EML trains {a['train_ratio_median']:.0f}× slower (median)",
+                    verdict(a["train_ratio_median"], lambda x: x <= 10, lambda x: x <= 100)))
+        pr, pl = a["prune_reduction_median"], a["prune_r2_loss_median"]
+        out.append(("C18", "pruning keeps accuracy", f"{pr:.0%} fewer parameters, validation R² change {-pl:+.4f} (medians)",
+                    "S" if pr >= .8 and pl <= .01 else ("P" if pr >= .5 and pl <= .02 else "N")))
     t = sub.get("trig @ 0.0", {}).get("recovery")
     if t is not None:
         out.append(("C12", "limitation: trigonometric laws", f"{t:.0%} recovered on trig problems",
                     "S" if t <= .10 else "N"))
     return out
+
+
+# -------------------------------------------------------------------------- efficiency
+def efficiency(eff: pd.DataFrame) -> dict:
+    """Per-task compute comparisons (definitions fixed in CLAIMS.md, C13-C18)."""
+    rows = []
+    for _, r in eff.iterrows():
+        if isinstance(r.get("error"), str) or not isinstance(r.get("models"), list):
+            continue
+        ms = {m["model"]: m for m in r["models"]}
+        e = ms.get("EML")
+        mlps = sorted([m for k, m in ms.items() if k.startswith("MLP")], key=lambda m: m["n_params"])
+        if e is None or not mlps:
+            continue
+        match = next((m for m in mlps if m["r2"] >= e["r2"] - 0.005), None)
+        pm = next((m for m in mlps if m["n_params"] >= e["n_params"]), mlps[-1])
+        big = ms.get("MLP128x128")
+        rows.append(dict(
+            kind=r["kind"], dataset=r["dataset"], eml_r2=e["r2"], eml_params=e["n_params"], eml_ops=e["ops"],
+            match_ratio=(match["n_params"] / max(e["n_params"], 1)) if match else math.inf,
+            match_model=match["model"] if match else None,
+            pm_model=pm["model"], pm_r2=pm["r2"], eml_beats_pm=bool(e["r2"] >= pm["r2"]),
+            mlp_r2=big["r2"] if big else None, mlp_params=big["n_params"] if big else None,
+            latency_ratio=(big["latency_s_per_1M"] / max(e["latency_s_per_1M"], 1e-12)) if big else None,
+            train_ratio=(e["train_s"] / max(big["train_s"], 1e-9)) if big else None,
+            dense_params=e.get("dense_n_params"), prune_reduction=1 - e["n_params"] / max(e.get("dense_n_params") or 1, 1),
+            prune_r2_loss=(e.get("dense_val_r2") or 0) - (e.get("val_r2") or 0),
+            gbm_r2=ms["GBM"]["r2"] if "GBM" in ms else None, gbm_params=ms["GBM"]["n_params"] if "GBM" in ms else None,
+            formula_r2=e.get("formula_r2")))
+    df = pd.DataFrame(rows)
+    out = {"n": int(len(df))}
+    for kind, g in df.groupby("kind"):
+        out[kind] = dict(n=int(len(g)), match_ratio_median=float(g.match_ratio.median()),
+                         no_mlp_matches=float(np.isinf(g.match_ratio).mean()),
+                         eml_beats_param_matched=float(g.eml_beats_pm.mean()),
+                         eml_params_median=float(g.eml_params.median()), eml_r2_median=float(g.eml_r2.median()),
+                         mlp_r2_median=float(g.mlp_r2.median()), latency_ratio_median=float(g.latency_ratio.median()),
+                         train_ratio_median=float(g.train_ratio.median()),
+                         prune_reduction_median=float(g.prune_reduction.median()),
+                         prune_r2_loss_median=float(g.prune_r2_loss.median()))
+    if "formula_r2" in df and df.formula_r2.notna().any():
+        gap = (df.eml_r2 - df.formula_r2).abs()
+        out["formula_mismatch_share"] = float((~(gap <= 0.01)).mean())
+    out["all"] = dict(latency_ratio_median=float(df.latency_ratio.median()),
+                      train_ratio_median=float(df.train_ratio.median()),
+                      eml_beats_param_matched=float(df.eml_beats_pm.mean()),
+                      prune_reduction_median=float(df.prune_reduction.median()),
+                      prune_r2_loss_median=float(df.prune_r2_loss.median()))
+    out["rows"] = rows
+    return out
+
+
+def efficiency_fig(eff: pd.DataFrame) -> None:
+    """Median test R^2 against parameter count: the MLP family as a curve, EML and GBM as points."""
+    _style()
+    kinds = [k for k in ("feynman", "tabular") if k in set(eff.kind)]
+    fig, axes = plt.subplots(1, len(kinds), figsize=(3.7 * len(kinds), 3.0), squeeze=False)
+    for ax, kind in zip(axes[0], kinds):
+        recs = [m | {"dataset": r["dataset"]} for _, r in eff[eff.kind == kind].iterrows()
+                if isinstance(r.get("models"), list) for m in r["models"]]
+        d = pd.DataFrame(recs)
+        d["r2c"] = d.r2.clip(lower=-0.5)
+        mlp = d[d.model.str.startswith("MLP")].groupby("model").agg(p=("n_params", "median"), r=("r2c", "median"))
+        mlp = mlp.sort_values("p")
+        ax.plot(mlp.p, mlp.r, color=COLORS["MLP"], lw=2, marker="o", ms=4, label="MLP (1 to 2×128 hidden)")
+        for name, col in (("EML", COLORS["EML"]), ("GBM", COLORS["GBM"])):
+            g = d[d.model == name]
+            if len(g):
+                ax.scatter([g.n_params.median()], [g.r2c.median()], s=60, color=col, edgecolor="white",
+                           linewidth=1.5, zorder=4, label=name)
+        ax.set_xscale("log")
+        ax.set_xlabel("parameters (median over tasks)")
+        ax.set_title("Feynman (1% noise)" if kind == "feynman" else "Tabular data", fontsize=9.5, loc="left", color=TEXT)
+    axes[0][0].set_ylabel("median test R²")
+    axes[0][-1].legend(loc="lower right", fontsize=7.5)
+    fig.tight_layout()
+    _save(fig, "efficiency_params_vs_r2")
 
 
 # ------------------------------------------------------------------------------- utils
@@ -270,6 +375,80 @@ def results_md(T: dict, C: list) -> str:
     return "\n".join(lines) + "\n"
 
 
+GROUPS = [
+    ("Does it perform very well?", ["C1", "C2", "C4", "C5", "C7"]),
+    ("Is it explainable while staying accurate?", ["C6", "C8", "C18"]),
+    ("Is it comparable to a regular neural network?", ["C3", "C9", "C16"]),
+    ("Does it need less compute?", ["C13", "C14", "C15", "C17"]),
+    ("Method and tooling", ["C10", "C11", "C12"]),
+]
+
+
+def readme_section(C: list) -> str:
+    word = {"S": "✅ supported", "P": "🟡 partly", "N": "❌ not supported"}
+    by = {c[0]: c for c in C}
+    lines = []
+    for title, ids in GROUPS:
+        have = [by[i] for i in ids if i in by]
+        if not have:
+            continue
+        lines += [f"**{title}**", "", "| # | Claim | Evidence | Verdict |", "|---|---|---|---|"]
+        lines += [f"| {c} | {t} | {e} | {word[v]} |" for c, t, e, v in have]
+        lines.append("")
+    figs = [("feynman_profile_noise0.0.png", "Share of Feynman problems below each test-error threshold, in and out of distribution"),
+            ("efficiency_params_vs_r2.png", "Accuracy against parameter count: EML formula vs. MLPs of every size and gradient boosting"),
+            ("tabular_eml_vs_mlp.png", "EML formula vs. MLP, cross-validated R² on 34 tabular data sets")]
+    for f, cap in figs:
+        if (FIG / f).exists():
+            lines += [f"<img src=\"paper/figures/{f}\" width=\"640\" alt=\"{cap}\">", "", f"*{cap}.*", ""]
+    return "\n".join(lines)
+
+
+def audit_notes(T: dict) -> str:
+    """Caveats found while auditing the results; numbers are recomputed on every run."""
+    tab = T.get("tabular", {}).get("rows", [])
+    phys = T.get("physics", {}).get("rows", [])
+    notes = []
+    bad = [r["dataset"] for r in tab + phys if r["r2"].get("EML") is not None and r["r2"]["EML"] < -1]
+    if bad:
+        notes.append(f"EML fails catastrophically (CV R² < −1) on {len(bad)} data sets ({', '.join(bad)}): on small, noisy "
+                     "data a learned exp(·) can blow up on held-out folds. Nothing clips the predictions, and the "
+                     "pre-registered numbers include these failures.")
+    ok = [r for r in tab if r["r2"].get("EML") is not None]
+    if ok:
+        best = [max(v for k, v in r["r2"].items() if k != "EML" and v is not None) for r in ok]
+        share = np.mean([r["r2"]["EML"] >= b - 0.02 for r, b in zip(ok, best)])
+        notes.append(f"C9 compares against the MLP, which is weak on the smallest data sets. Against the *best* baseline "
+                     f"per data set, EML is within 0.02 R² or better on {share:.0%} of tabular data sets.")
+    notes.append("`561_cpu`: the target equals the *estimated* relative performance (ERP) of the original 1987 study "
+                 "(correlation 1.0 with the UCI ERP column), i.e. it is itself a regression formula. EML's R² = 1.000 there "
+                 "means it recovered that formula; it is not a typical real-world result.")
+    notes.append("Some C7 wins come from data sets so small that several baselines collapse (Bode n = 8, Kepler n = 6, "
+                 "leave-one-out). Kepler is still informative: EML finds period ∝ a^1.5 with R² = 1.000 vs 0.865 for the MLP.")
+    notes.append("Physics formulas are not always clean laws. Kepler comes out as 359.9·a^1.509 times near-1 factors (true: "
+                 "365.25·a^1.5). On `ideal_gas` EML fails (R² 0.38): that target is ln P = ln n + ln R + ln T − ln V, a plain *sum* "
+                 "of log-features, and the curriculum has no stage for that (every stage routes the output through exp/ln nodes). "
+                 "Adding an additive-log stage is the obvious fix; we did not apply it, to keep the pre-registered protocol intact.")
+    E = T.get("efficiency", {})
+    if "formula_mismatch_share" in E:
+        notes.append(f"The exported formula and `model.predict` disagree (|ΔR²| > 0.01) on {E['formula_mismatch_share']:.0%} of "
+                     "compute-benchmark test sets. The network clamps exp(·) and guards ln|·|; the printed formula does not. All "
+                     "reported accuracies use `model.predict`. An earlier version of the compute benchmark scored the raw "
+                     "formula and is kept in `results/superseded/`.")
+    notes.append("The SRBench-style recovery check is conservative. It rounds constants to 3 decimals, which can hide an "
+                 "exact recovery (e.g. II.24.17 is recovered exactly but scored as a miss).")
+    return "\n".join(["**Audit notes**", ""] + [f"- {n}" for n in notes]) + "\n"
+
+
+def inject_readme(text: str) -> None:
+    path = ROOT / "README.md"
+    s = path.read_text()
+    a, b = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
+    if a in s and b in s:
+        s = s[: s.index(a) + len(a)] + "\n" + text + "\n" + s[s.index(b):]
+        path.write_text(s)
+
+
 def main():
     T = {}
     fe = load("feynman.jsonl")
@@ -286,14 +465,24 @@ def main():
         tabular_scatter_fig(T["tabular"], "GBM")
     ab = load("ablation.jsonl")
     if not ab.empty:
+        ab["symbolic"] = ab["symbolic"].fillna(False)
         T["ablation"] = [dict(method=m, n=int(len(h)), recovery=float(h.symbolic.astype(float).mean()),
                               ood_r2_99=float((h.r2_ood.fillna(-np.inf) > 0.99).mean()),
                               time_median=float(h.time.median())) for m, h in ab.groupby("method")]
+    ef = load("efficiency.jsonl")
+    if not ef.empty:
+        T["efficiency"] = efficiency(ef)
+        efficiency_fig(ef)
     C = claims(T, fe, ab) if "feynman" in T else []
     T["claims"] = [dict(id=c, claim=t, evidence=e, verdict=v) for c, t, e, v in C]
     (ROOT / "paper").mkdir(exist_ok=True)
     (ROOT / "paper" / "tables.json").write_text(json.dumps(T, indent=1, default=str))
     (ROOT / "RESULTS.md").write_text(results_md(T, C))
+    if C:
+        notes = audit_notes(T)
+        inject_readme(readme_section(C) + "\n" + notes)
+        with open(ROOT / "RESULTS.md", "a") as fh:
+            fh.write("\n" + notes)
     for c, t, e, v in C:
         print(f"{c:4s} {v}  {t:45s} {e}")
 

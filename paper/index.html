@@ -1,4 +1,9 @@
-<title>EML Networks</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarking EML Networks</title>
 <meta name="description" content="Learning closed-form laws with trainable Exp-Minus-Log networks.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,10 +86,12 @@ td.best { color: var(--good); font-weight: 600; }
 }
 </style>
 
+</head>
+<body>
 <main>
 <header style="display:flex;flex-direction:column;gap:0.7rem">
   <span class="eyebrow">Preprint · October 2026</span>
-  <h1>EML Networks: learning closed-form laws with a single trainable operator</h1>
+  <h1>Benchmarking EML based Neural Networks</h1>
   <div class="byline"><span>Hrishikesh K Haritas · Carnegie Mellon University</span><span>Code: <span class="mono">emlkit</span></span></div>
 </header>
 
@@ -98,14 +105,14 @@ with affine arguments. They are trained by gradient descent, then pruned and sna
 needs four ingredients: least-squares solution of the output node's argument in log space, successive halving
 over restarts, an annealed pull of exponents towards multiples of ½, and Levenberg–Marquardt verification of each
 pruned or snapped structure.</p>
-<p>On the 99 Feynman equations, EML networks recover the exact law for 95% of the held-out problems
-without trigonometric functions (87% of all problems, against 34% for genetic
-programming). In distribution they match an MLP: R² &gt; 0.999 on 100% of problems against 58%.
-Out of distribution they keep R² &gt; 0.99 on 90% of problems, against 4% for the MLP and
-0% for gradient boosting. We also test the method on real physics measurements and general tabular data,
-report where it fails (trigonometric laws, sign-changing products, data sets without a compact law), and release
-<span class="mono">emlkit</span>, a scikit-learn estimator plus a compiler that turns any elementary expression into a
-pure EML tree.</p>
+<p>On the 99 Feynman equations, EML networks recover the exact law for 82% of the held-out problems
+without trigonometric functions (65% of all problems, against 26% for genetic
+programming). In distribution they match an MLP: R² &gt; 0.999 on 92% of problems against 55%.
+Out of distribution they keep R² &gt; 0.99 on 81% of problems, against 5% for the MLP and
+0% for gradient boosting. The learned formulas are cheap to run: a median 147× faster than a 2×128 MLP, and an MLP needs a median 10× more parameters to match them on the Feynman problems. Training, however, is a median 184× slower. We also report where the method fails: trigonometric laws,
+sign-changing products, exponential blow-ups on small noisy data, and data sets without a compact law. Every claim was
+tested against thresholds fixed before the results. We release <span class="mono">emlkit</span>, a scikit-learn
+estimator plus a compiler that turns any elementary expression into a pure EML tree.</p>
 </section>
 
 
@@ -126,7 +133,8 @@ pre-declared claims (<a href="#claims">Table 1</a>). We contribute:</p>
   halving, annealed quantisation, Levenberg–Marquardt verification of structural edits, and an Occam curriculum
   with BIC selection (§3).</li>
   <li><b>An evaluation</b> on 99 Feynman equations (with out-of-distribution tests), 15 real physics data sets and
-  34 tabular data sets, with ablations and a scorecard of every claim (§5).</li>
+  34 tabular data sets. It covers accuracy, explainability, comparison with neural networks, compute, and ablations, with a
+  scorecard of 18 pre-declared claims (§5).</li>
   <li><b><span class="mono">emlkit</span></b>, an open-source scikit-learn estimator and a pure-EML compiler,
   verifier and shortest-tree search.</li>
 </ul>
@@ -254,33 +262,55 @@ features and ≤ 5,000 rows, excluding synthetic generators. Metric: pooled out-
 units, standardised inputs and target, and early stopping; histogram gradient boosting; random forest; GPLearn genetic
 programming (population 2,000, 30 generations). EML uses the library defaults (24 restarts per stage, 1,000-step
 budget per stage). Every run uses one CPU core on Modal with identical package versions.</p>
+<p><b>Compute.</b> On one split per problem (Feynman with 1% noise; tabular with a 75/25 split) we compare EML with
+MLPs of nine sizes and with gradient boosting in parameters, inference latency and training time (§5.4).</p>
 
 <h2 id="claims"><span class="num">5</span>Results</h2>
 <p>Table 1 states each claim, the evidence and the verdict, computed mechanically from the thresholds declared in
 <span class="mono">CLAIMS.md</span> before the full results existed.</p>
 <p class="tcap"><b>Table 1.</b> Claims scorecard.</p>
-<div class="table-wrap claims"><table><thead><tr><th>#</th><th>Claim</th><th>Evidence</th><th>Verdict</th></tr></thead><tbody><tr><td>C1</td><td>EML recovers exact laws</td><td>95% of held-out non-trig problems</td><td class="best">Supported</td></tr><tr><td>C2</td><td>at least as good as GP symbolic regression</td><td>EML 87% vs GPLearn 34%</td><td class="best">Supported</td></tr><tr><td>C3</td><td>matches an MLP in distribution</td><td>R²>0.999 on 100% (EML) vs 58% (MLP)</td><td class="best">Supported</td></tr><tr><td>C4</td><td>extrapolates far better than MLP / GBM</td><td>OOD R²>0.99 on 90% (EML) vs 4% (MLP), 0% (GBM)</td><td class="best">Supported</td></tr><tr><td>C6</td><td>models are readable</td><td>median size 10 (Feynman), 14 (real data) SymPy nodes</td><td class="best">Supported</td></tr><tr><td>C7</td><td>best model on some real data sets</td><td>1 data sets: first_principles_kepler</td><td class="">Partly</td></tr><tr><td>C8</td><td>accurate while explainable (physics data)</td><td>median gap to best baseline +0.030 R²</td><td class="">Partly</td></tr><tr><td>C10</td><td>every training component matters</td><td>noLogVP −7 pts; noVP −-4 pts</td><td class="">Not supported</td></tr><tr><td>C11</td><td>compiler is exact</td><td>max error 1.7e-15 over 17 expressions</td><td class="best">Supported</td></tr><tr><td>C12</td><td>limitation: trigonometric laws</td><td>0% recovered on trig problems</td><td class="best">Supported</td></tr></tbody></table></div>
+<div class="table-wrap claims"><table><thead><tr><th>#</th><th>Claim</th><th>Evidence</th><th>Verdict</th></tr></thead><tbody><tr><td>C1</td><td>EML recovers exact laws</td><td>82% of held-out non-trig problems</td><td class="best">Supported</td></tr><tr><td>C2</td><td>at least as good as GP symbolic regression</td><td>EML 65% vs GPLearn 26%</td><td class="best">Supported</td></tr><tr><td>C3</td><td>matches an MLP in distribution</td><td>R²>0.999 on 92% (EML) vs 55% (MLP)</td><td class="best">Supported</td></tr><tr><td>C4</td><td>extrapolates far better than MLP / GBM</td><td>OOD R²>0.99 on 81% (EML) vs 5% (MLP), 0% (GBM)</td><td class="best">Supported</td></tr><tr><td>C5</td><td>survives 1% label noise</td><td>recovery 34% at 1% vs 65% noiseless</td><td class="best">Supported</td></tr><tr><td>C6</td><td>models are readable</td><td>median size 14 (Feynman), 25 (real data) SymPy nodes</td><td class="best">Supported</td></tr><tr><td>C7</td><td>best model on some real data sets</td><td>15 data sets: bode, kepler, leavitt, planck, rydberg, schechter, tully_fisher, 192_vineyard, …</td><td class="best">Supported</td></tr><tr><td>C8</td><td>accurate while explainable (physics data)</td><td>median gap to best baseline +0.001 R²</td><td class="best">Supported</td></tr><tr><td>C9</td><td>comparable to a NN (tabular data)</td><td>within 0.02 of the MLP or better on 53% of data sets</td><td class="best">Supported</td></tr><tr><td>C10</td><td>every training component matters</td><td>wide -30 pts; noVP -27 pts; noLM -19 pts; untyped -19 pts; noLogVP -11 pts; noQ -11 pts; noHalving -8 pts; skip -0 pts</td><td class="">Not supported</td></tr><tr><td>C11</td><td>compiler is exact</td><td>max error 1.7e-15 over 17 expressions</td><td class="best">Supported</td></tr><tr><td>C13</td><td>same accuracy with far fewer parameters (Feynman)</td><td>matching MLP needs 10× more parameters (median; no MLP matches EML on 21%)</td><td class="best">Supported</td></tr><tr><td>C14</td><td>same accuracy with fewer parameters (tabular)</td><td>matching MLP needs 4× more parameters (median; no MLP matches EML on 21%)</td><td class="">Partly</td></tr><tr><td>C15</td><td>cheaper inference</td><td>2×128 MLP is 147× slower per prediction (median)</td><td class="best">Supported</td></tr><tr><td>C16</td><td>beats a parameter-matched NN</td><td>EML ≥ parameter-matched MLP on 95% of tasks</td><td class="best">Supported</td></tr><tr><td>C17</td><td>training cost comparable to an MLP</td><td>EML trains 184× slower (median)</td><td class="">Not supported</td></tr><tr><td>C18</td><td>pruning keeps accuracy</td><td>45% fewer parameters, validation R² change +0.0000 (medians)</td><td class="">Not supported</td></tr><tr><td>C12</td><td>limitation: trigonometric laws</td><td>0% recovered on trig problems</td><td class="best">Supported</td></tr></tbody></table></div>
 
 <h3><span class="num">5.1</span>Feynman equations</h3>
 <p class="tcap"><b>Table 2.</b> 99 Feynman problems without noise (top) and with 1% label noise (bottom).</p>
-<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr class="ours"><td>EML</td><td>87%</td><td>100%</td><td>90%</td><td>87%</td><td>10</td><td>4</td></tr><tr><td>GPLearn</td><td>34%</td><td>45%</td><td>48%</td><td>30%</td><td>15</td><td>16</td></tr><tr><td>MLP</td><td>–</td><td>58%</td><td>4%</td><td>0%</td><td>–</td><td>2</td></tr><tr><td>GBM</td><td>–</td><td>3%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>0%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
-<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr><td>GPLearn</td><td>26%</td><td>35%</td><td>40%</td><td>23%</td><td>16</td><td>19</td></tr><tr><td>MLP</td><td>–</td><td>54%</td><td>4%</td><td>0%</td><td>–</td><td>3</td></tr><tr><td>GBM</td><td>–</td><td>2%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>1%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
+<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr class="ours"><td>EML</td><td>65%</td><td>92%</td><td>81%</td><td>68%</td><td>14</td><td>58</td></tr><tr><td>GPLearn</td><td>26%</td><td>36%</td><td>40%</td><td>23%</td><td>17</td><td>16</td></tr><tr><td>MLP</td><td>–</td><td>55%</td><td>5%</td><td>0%</td><td>–</td><td>2</td></tr><tr><td>GBM</td><td>–</td><td>3%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>1%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
+<div class="table-wrap "><table><thead><tr><th>Method</th><th>Exact recovery</th><th>R²<sub>ID</sub> &gt; 0.999</th><th>R²<sub>OOD</sub> &gt; 0.99</th><th>OOD NMSE &lt; 10⁻⁹</th><th>Median size</th><th>Median s</th></tr></thead><tbody><tr class="ours"><td>EML</td><td>34%</td><td>94%</td><td>81%</td><td>0%</td><td>17</td><td>321</td></tr><tr><td>GPLearn</td><td>26%</td><td>35%</td><td>40%</td><td>23%</td><td>16</td><td>19</td></tr><tr><td>MLP</td><td>–</td><td>54%</td><td>4%</td><td>0%</td><td>–</td><td>3</td></tr><tr><td>GBM</td><td>–</td><td>2%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>RF</td><td>–</td><td>1%</td><td>0%</td><td>0%</td><td>–</td><td>1</td></tr><tr><td>Linear</td><td>–</td><td>0%</td><td>3%</td><td>0%</td><td>–</td><td>0</td></tr></tbody></table></div>
 <figure>
   <img src="figures/feynman_profile_noise0.0.svg" alt="Share of Feynman problems solved below each NMSE threshold, in and out of distribution, for EML, GPLearn, MLP and GBM.">
   <figcaption><b>Figure 2.</b> Share of the 99 problems whose test NMSE is below τ. In distribution the MLP is close to EML
   at moderate thresholds, but only exact formulas reach the left of the plot. Out of distribution, the gap between laws
   and fitted surfaces opens over the whole range.</figcaption>
 </figure>
-<p>EML recovers 87% of all problems exactly (86% of the held-out set, 100% of the dev set, and 95% of held-out problems without trigonometric functions). GPLearn recovers 34%. Every method that fits well in distribution looks similar there, but extrapolation separates them. 87% of EML models stay exact (NMSE &lt; 10⁻⁹) far outside the training box, against 0% for the MLP and 0% for gradient boosting. </p>
+<p>EML recovers 65% of all problems exactly (66% of the held-out set, 50% of the dev set, and 82% of held-out problems without trigonometric functions). GPLearn recovers 26%. Every method that fits well in distribution looks similar there, but extrapolation separates them. 68% of EML models stay exact (NMSE &lt; 10⁻⁹) far outside the training box, against 0% for the MLP and 0% for gradient boosting. With 1% label noise EML still recovers 34% of the laws, and keeps OOD R² &gt; 0.99 on 81% of problems.</p>
 <h3><span class="num">5.2</span>Real data</h3>
 <p class="tcap"><b>Table 3.</b> Physics data: 5-fold CV R² (leave-one-out for n &lt; 20); best value per row
 in green. The last column is the EML formula fit to all data.</p>
-<div class="table-wrap "><table><thead><tr><th>Data set</th><th>n</th><th>EML</th><th>GPLearn</th><th>MLP</th><th>GBM</th><th>RF</th><th>Linear</th><th>EML formula</th></tr></thead><tbody><tr><td>absorption</td><td>14</td><td>–</td><td>-16.949</td><td class="best">0.974</td><td>0.711</td><td>0.885</td><td>0.625</td><td class="formula"></td></tr><tr><td>bode</td><td>8</td><td>–</td><td>-175252777639.843</td><td>-551.294</td><td>-0.306</td><td class="best">0.554</td><td>-19304.546</td><td class="formula"></td></tr><tr><td>hubble</td><td>32</td><td>0.709</td><td>0.208</td><td>0.730</td><td class="best">0.862</td><td>0.816</td><td>0.697</td><td class="formula">1.019e+5/D**0.3319 - 1.05e+5/D**0.3266 + 3577.0</td></tr><tr><td>ideal_gas</td><td>30</td><td>–</td><td>0.537</td><td class="best">0.879</td><td>0.674</td><td>0.632</td><td>0.830</td><td class="formula"></td></tr><tr><td>kepler</td><td>6</td><td class="best">1.000</td><td>0.818</td><td>0.865</td><td>-0.440</td><td>0.214</td><td>0.905</td><td class="formula">359.9*a**1.509*exp(0.001051*a)/(0.5894*a - 0.387*log(a) - 0.4131)**0.00792</td></tr><tr><td>leavitt</td><td>26</td><td>–</td><td class="best">0.933</td><td>0.924</td><td>0.645</td><td>0.896</td><td>0.915</td><td class="formula"></td></tr><tr><td>newton</td><td>30</td><td>–</td><td class="best">0.977</td><td>-10.774</td><td>0.861</td><td>0.810</td><td>-0.841</td><td class="formula"></td></tr><tr><td>planck</td><td>100</td><td>–</td><td>-0.013</td><td>0.460</td><td>0.785</td><td class="best">0.812</td><td>0.203</td><td class="formula"></td></tr><tr><td>rydberg</td><td>50</td><td>–</td><td>0.987</td><td class="best">0.999</td><td>0.997</td><td>0.993</td><td>0.967</td><td class="formula"></td></tr><tr><td>schechter</td><td>27</td><td>–</td><td>0.828</td><td class="best">0.989</td><td>0.753</td><td>0.889</td><td>0.744</td><td class="formula"></td></tr><tr><td>supernovae_zg</td><td>243</td><td>–</td><td>0.851</td><td>0.939</td><td>0.998</td><td class="best">0.999</td><td>0.553</td><td class="formula"></td></tr><tr><td>supernovae_zr</td><td>236</td><td>–</td><td>0.867</td><td class="best">0.998</td><td>0.993</td><td>0.993</td><td>0.499</td><td class="formula"></td></tr><tr><td>tully_fisher</td><td>18</td><td>–</td><td>0.838</td><td>0.455</td><td>0.775</td><td>0.826</td><td class="best">0.860</td><td class="formula"></td></tr><tr><td>nikuradse_1</td><td>362</td><td>–</td><td>0.939</td><td class="best">0.999</td><td>0.998</td><td>0.998</td><td>0.653</td><td class="formula"></td></tr><tr><td>nikuradse_2</td><td>362</td><td>–</td><td>0.825</td><td class="best">0.977</td><td>0.952</td><td>0.966</td><td>-0.003</td><td class="formula"></td></tr></tbody></table></div>
+<div class="table-wrap "><table><thead><tr><th>Data set</th><th>n</th><th>EML</th><th>GPLearn</th><th>MLP</th><th>GBM</th><th>RF</th><th>Linear</th><th>EML formula</th></tr></thead><tbody><tr><td>absorption</td><td>14</td><td>-300.181</td><td>-16.949</td><td class="best">0.974</td><td>0.711</td><td>0.885</td><td>0.625</td><td class="formula">0.3338*Xaxis0**9.673*exp(8.532/(Xaxis0**0.7026*(0.3358*Xaxis0 + 0.2849*log(Xaxis0) + 1.175)**0.6353) + 0.00090</td></tr><tr><td>bode</td><td>8</td><td class="best">0.982</td><td>-175252777639.843</td><td>-551.294</td><td>-0.306</td><td>0.554</td><td>-19304.546</td><td class="formula">14.35*exp(0.01192*n + 51.09*Abs((0.001437*n + 0.6304)**0.6932*(-0.0002371*n + 0.2231*log(Abs(n)/1000) + 1.295)</td></tr><tr><td>hubble</td><td>32</td><td>0.709</td><td>0.208</td><td>0.730</td><td class="best">0.862</td><td>0.816</td><td>0.697</td><td class="formula">1.019e+5/D**0.3319 - 1.05e+5/D**0.3266 + 3577.0</td></tr><tr><td>ideal_gas</td><td>30</td><td>0.378</td><td>0.537</td><td class="best">0.879</td><td>0.674</td><td>0.632</td><td>0.830</td><td class="formula">2319.0*V**0.1492*exp(-0.06401*V**0.2561*sqrt(n)/T**0.3114 - 36.87*n**0.1635/(sqrt(T)*V**0.225) + 0.0001752*V**</td></tr><tr><td>kepler</td><td>6</td><td class="best">1.000</td><td>0.818</td><td>0.865</td><td>-0.440</td><td>0.214</td><td>0.905</td><td class="formula">359.9*a**1.509*exp(0.001051*a)/(0.5894*a - 0.387*log(a) - 0.4131)**0.00792</td></tr><tr><td>leavitt</td><td>26</td><td class="best">0.951</td><td>0.933</td><td>0.924</td><td>0.645</td><td>0.896</td><td>0.915</td><td class="formula">17.21*logP**0.06124*exp(-0.2326*logP)</td></tr><tr><td>newton</td><td>30</td><td>-13.851</td><td class="best">0.977</td><td>-10.774</td><td>0.861</td><td>0.810</td><td>-0.841</td><td class="formula">8.69*m1**0.02013*m2**0.01861*r**0.2144*exp(-8.161e-13*r**0.9527*Abs((-2.21e-30*m1 + 5.194e-13*r + log(m1**0.87</td></tr><tr><td>planck</td><td>100</td><td class="best">1.000</td><td>-0.013</td><td>0.460</td><td>0.785</td><td>0.812</td><td>0.203</td><td class="formula">-17.02*(-T**1.144*(0.06841*log(T) + 0.1599*log(nu) - 6.946) + 7.51e-14*nu**1.143)**0.8693/(T**0.9992*nu**0.002</td></tr><tr><td>rydberg</td><td>50</td><td class="best">1.000</td><td>0.987</td><td>0.999</td><td>0.997</td><td>0.993</td><td>0.967</td><td class="formula">-17.56*exp(-0.008643*n_1 + 0.003002*n_2)*Abs(-0.9932*n_1 + 0.9568*n_2 + log(n_1**0.5704/n_2**0.7029) + 0.0968)</td></tr><tr><td>schechter</td><td>27</td><td class="best">0.996</td><td>0.828</td><td>0.989</td><td>0.753</td><td>0.889</td><td>0.744</td><td class="formula">-8.708*L**0.05651*exp(1.049e-10*L)</td></tr><tr><td>supernovae_zg</td><td>243</td><td>-6.703</td><td>0.851</td><td>0.939</td><td>0.998</td><td class="best">0.999</td><td>0.553</td><td class="formula">0.3216*Xaxis0 + 34.34*(3*Xaxis0/200 - 0.2126*log(Abs(Xaxis0)/100) - 0.0004151*Abs(Xaxis0)**(3/2) + 1)**(3/2)*e</td></tr><tr><td>supernovae_zr</td><td>236</td><td>-2233357029793081088.000</td><td>0.867</td><td class="best">0.998</td><td>0.993</td><td>0.993</td><td>0.499</td><td class="formula">0.007226*Xaxis0**2 + 0.005886*Xaxis0 - 6.405*(0.02142*Xaxis0**2 - Xaxis0 + 200*log(Abs(Xaxis0)/100) - 0.004005</td></tr><tr><td>tully_fisher</td><td>18</td><td class="best">0.924</td><td>0.838</td><td>0.455</td><td>0.775</td><td>0.826</td><td>0.860</td><td class="formula">-8.359*DV**0.1433</td></tr><tr><td>nikuradse_1</td><td>362</td><td>0.998</td><td>0.939</td><td class="best">0.999</td><td>0.998</td><td>0.998</td><td>0.653</td><td class="formula">3.498*(0.9371*r_k**0.4202/log_Re**2.674 + 0.3327*log_Re + log(3.895/(log_Re**0.9146*r_k**0.2953)) + 1.084 - 8.</td></tr><tr><td>nikuradse_2</td><td>362</td><td>0.973</td><td>0.825</td><td class="best">0.977</td><td>0.952</td><td>0.966</td><td>-0.003</td><td class="formula">0.9904*exp(0.2348*log_v_k_nu)/(1.206*log_v_k_nu - log(Abs(log_v_k_nu)) - 1)**0.325</td></tr></tbody></table></div>
+<p class="tcap"><b>Table 4.</b> 34 general tabular data sets: median 5-fold CV R² and mean rank (1 = best).</p>
+<div class="table-wrap "><table><thead><tr><th>Method</th><th>Median R²</th><th>Mean rank</th></tr></thead><tbody><tr class="ours"><td>EML</td><td>0.743</td><td>3.32</td></tr><tr><td>GPLearn</td><td>0.637</td><td>4.50</td></tr><tr><td>MLP</td><td>0.774</td><td>2.94</td></tr><tr><td>GBM</td><td>0.717</td><td>3.82</td></tr><tr><td>RF</td><td>0.763</td><td>3.09</td></tr><tr><td>Linear</td><td>0.638</td><td>3.32</td></tr></tbody></table></div>
+<figure>
+  <img src="figures/tabular_eml_vs_mlp.svg" alt="Scatter of EML versus MLP cross-validated R squared on 34 tabular data sets.">
+  <figcaption><b>Figure 3.</b> EML closed-form models against the MLP on general tabular data. Points above the dashed
+  line are within 0.02 R² of the MLP or better.</figcaption>
+</figure>
 <h3><span class="num">5.3</span>Ablations</h3>
-<p class="tcap"><b>Table 5.</b> Exact recovery on 27 held-out non-trigonometric Feynman problems (every other one,
+<p class="tcap"><b>Table 5.</b> Exact recovery on 37 held-out non-trigonometric Feynman problems (every other one,
 fixed list) when one component is removed.</p>
-<div class="table-wrap "><table><thead><tr><th>Variant</th><th>Recovery</th><th>Change</th></tr></thead><tbody><tr class="ours"><td>full method</td><td>96%</td><td>–</td></tr><tr><td>no log-space projection (linear output only)</td><td>90%</td><td>-7 pts</td></tr><tr><td>no variable projection</td><td>100%</td><td>+4 pts</td></tr></tbody></table></div>
-<h3><span class="num">5.4</span>The pure EML compiler</h3>
+<div class="table-wrap "><table><thead><tr><th>Variant</th><th>Recovery</th><th>Change</th></tr></thead><tbody><tr class="ours"><td>full method</td><td>81%</td><td>–</td></tr><tr><td>no curriculum (one wide net)</td><td>51%</td><td>-30 pts</td></tr><tr><td>no variable projection</td><td>54%</td><td>-27 pts</td></tr><tr><td>no Levenberg–Marquardt</td><td>62%</td><td>-19 pts</td></tr><tr><td>untyped M units only</td><td>62%</td><td>-19 pts</td></tr><tr><td>no log-space projection (linear output only)</td><td>70%</td><td>-11 pts</td></tr><tr><td>no annealed quantisation</td><td>70%</td><td>-11 pts</td></tr><tr><td>no successive halving</td><td>73%</td><td>-8 pts</td></tr><tr><td>read-out sees all features</td><td>81%</td><td>-0 pts</td></tr></tbody></table></div>
+<h3><span class="num">5.4</span>Compute</h3>
+<p>For each problem we also fit MLPs with one hidden layer of 1 to 128 units, plus the 2×128 baseline, and measured
+parameters, single-core NumPy inference time on 100k rows, and training time. EML formulas are tiny and fast to
+evaluate. The price is paid during training.</p>
+<p class="tcap"><b>Table 6.</b> Medians per task. <i>Params ratio</i>: parameters of the smallest MLP that matches EML's
+test R² within 0.005, divided by EML's (EML wins outright where no MLP matches). <i>vs. same-size MLP</i>: share of tasks
+where EML ≥ the smallest MLP with at least as many parameters.</p>
+<div class="table-wrap "><table><thead><tr><th>Tasks</th><th>n</th><th>EML R²</th><th>2×128 MLP R²</th><th>EML params</th><th>Params ratio</th><th>vs. same-size MLP</th><th>Inference speed-up</th><th>Training slow-down</th></tr></thead><tbody><tr><td>Feynman, 1% noise</td><td>99</td><td>1.000</td><td>0.999</td><td>8</td><td>10×</td><td>99%</td><td>215×</td><td>156×</td></tr><tr><td>Tabular</td><td>34</td><td>0.759</td><td>0.743</td><td>10</td><td>4×</td><td>85%</td><td>82×</td><td>1282×</td></tr></tbody></table></div>
+<figure>
+  <img src="figures/efficiency_params_vs_r2.svg" alt="Median test R squared against parameter count for MLPs of every size, EML and gradient boosting.">
+  <figcaption><b>Figure 4.</b> Median test R² against parameter count. The MLP curve has to grow by orders of magnitude to
+  reach the accuracy of the EML formula on the Feynman problems; on tabular data the gap is smaller.</figcaption>
+</figure>
+<h3><span class="num">5.5</span>The pure EML compiler</h3>
 <p><span class="mono">emlkit.tree</span> compiles any elementary SymPy expression into a tree over {eml, 1, x} using
 textbook identities, for example ln x = eml(1, eml(eml(1, x), 1)) and a − b = eml(ln a, e<sup>b</sup>). It
 evaluates the tree with the principal complex logarithm and checks it against the source expression. The constructions
@@ -288,7 +318,7 @@ are correct, not minimal. Exhaustive search confirms the shortest trees for exp 
 explain why we train shallow typed networks rather than pure trees: x·y already needs 23 leaves and sin x needs 264.
 Fractional powers of negative numbers can land on the other branch of the logarithm. We verify on domains where the
 source expression is real.</p>
-<p class="tcap"><b>Table 6.</b> Pure EML trees produced by the compiler (leaves, depth, distinct nodes when identical
+<p class="tcap"><b>Table 7.</b> Pure EML trees produced by the compiler (leaves, depth, distinct nodes when identical
 subtrees are shared) and maximum relative error at 64 random points.</p>
 <div class="table-wrap "><table><thead><tr><th>Expression</th><th>Leaves</th><th>Depth</th><th>Shared nodes</th><th>Max error</th></tr></thead><tbody><tr><td><code>exp(x)</code></td><td>2</td><td>1</td><td>1</td><td>0e+00</td></tr><tr><td><code>log(x)</code></td><td>4</td><td>3</td><td>3</td><td>2e-16</td></tr><tr><td><code>x - y</code></td><td>6</td><td>4</td><td>5</td><td>4e-16</td></tr><tr><td><code>-x</code></td><td>11</td><td>8</td><td>9</td><td>1e-16</td></tr><tr><td><code>x + y</code></td><td>16</td><td>10</td><td>14</td><td>3e-16</td></tr><tr><td><code>x*y</code></td><td>23</td><td>12</td><td>21</td><td>4e-16</td></tr><tr><td><code>x/y</code></td><td>13</td><td>8</td><td>12</td><td>2e-16</td></tr><tr><td><code>x**y</code></td><td>27</td><td>16</td><td>25</td><td>2e-15</td></tr><tr><td><code>sqrt(x)</code></td><td>54</td><td>25</td><td>41</td><td>3e-16</td></tr><tr><td><code>2</code></td><td>16</td><td>10</td><td>10</td><td>0e+00</td></tr><tr><td><code>pi</code></td><td>67</td><td>26</td><td>32</td><td>0e+00</td></tr><tr><td><code>I</code></td><td>42</td><td>20</td><td>26</td><td>3e-17</td></tr><tr><td><code>sin(x)</code></td><td>264</td><td>71</td><td>94</td><td>9e-16</td></tr><tr><td><code>cos(x)</code></td><td>220</td><td>55</td><td>85</td><td>9e-16</td></tr><tr><td><code>tanh(x)</code></td><td>77</td><td>27</td><td>44</td><td>5e-16</td></tr><tr><td><code>exp(-x**2/2)/sqrt(2*pi)</code></td><td>328</td><td>68</td><td>139</td><td>2e-16</td></tr><tr><td><code>x*y/(4*pi*z**2)</code></td><td>231</td><td>52</td><td>125</td><td>8e-16</td></tr></tbody></table></div>
 
@@ -299,8 +329,12 @@ subtrees are shared) and maximum relative error at 64 random points.</p>
   ln(−1) = iπ, are the natural extension.</li>
   <li><b>Sign-changing products.</b> Log-space stages need y of constant sign, and ln|·| loses the sign of a factor.
   A law such as n k T ln(V₂/V₁) is therefore only approximated.</li>
-  <li><b>Cost.</b> A fit takes seconds when an early curriculum stage is exact, and several minutes on one core
-  otherwise. That is about 10–100× an MLP fit.</li>
+  <li><b>Training cost.</b> A fit takes seconds when an early curriculum stage is exact and minutes otherwise, typically
+  two orders of magnitude more than an MLP (C17).</li>
+  <li><b>Blow-ups on small noisy data.</b> On a few small tabular sets a learned exp(·) explodes on held-out folds
+  (CV R² &lt; −1). Clipping predictions to the training range would hide this, so we do not.</li>
+  <li><b>A missing stage.</b> A target that is a plain sum of logarithms (the <i>ideal_gas</i> set stores ln P) is
+  not represented by any strict curriculum stage, and EML fails on it.</li>
   <li><b>Scope.</b> One seed per configuration, default hyper-parameters, and GPLearn as the only GP baseline.
   Stronger GP systems (PySR, Operon) would make a harder comparison.</li>
 </ul>
@@ -335,3 +369,6 @@ are reproducible with <span class="mono">emlkit</span>.</p>
   <li>Udrescu, S.-M. &amp; Tegmark, M. (2020). AI Feynman: a physics-inspired method for symbolic regression. <i>Science Advances</i> 6(16).</li>
 </ul>
 </main>
+
+</body>
+</html>
